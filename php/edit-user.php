@@ -11,16 +11,23 @@ $message = '';
 $user = null;
 $errors = [];
 
-// Get username from URL
-if (!isset($_GET['username'])) {
+// Get username and table name from URL
+if (!isset($_GET['username']) || !isset($_GET['table'])) {
     header("Location: manage-users.php");
     exit();
 }
 
 $username = $_GET['username'];
+$table = $_GET['table'];
+
+// Validate table name to prevent SQL injection
+if ($table !== 'admin' && $table !== 'customer') {
+    header("Location: manage-users.php");
+    exit();
+}
 
 // Fetch user data
-$stmt = $mysqli->prepare("SELECT username, email, contact, role FROM customer WHERE username = ?");
+$stmt = $mysqli->prepare("SELECT username, email, contact, role FROM $table WHERE username = ?");
 $stmt->bind_param("s", $username);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -54,7 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Check if new username exists (excluding current user)
     if ($new_username !== $username) {
-        $stmt = $mysqli->prepare("SELECT username FROM customer WHERE username = ? AND username != ?");
+        $stmt = $mysqli->prepare("SELECT username FROM $table WHERE username = ? AND username != ?");
         $stmt->bind_param("ss", $new_username, $username);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -68,11 +75,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (empty($errors)) {
         if (!empty($password)) {
             // Update with new plain text password
-            $stmt = $mysqli->prepare("UPDATE customer SET username = ?, email = ?, password = ?, contact = ?, role = ? WHERE username = ?");
+            $stmt = $mysqli->prepare("UPDATE $table SET username = ?, email = ?, password = ?, contact = ?, role = ? WHERE username = ?");
             $stmt->bind_param("ssssss", $new_username, $email, $password, $contact, $role, $username);
         } else {
             // Update without changing password
-            $stmt = $mysqli->prepare("UPDATE customer SET username = ?, email = ?, contact = ?, role = ? WHERE username = ?");
+            $stmt = $mysqli->prepare("UPDATE $table SET username = ?, email = ?, contact = ?, role = ? WHERE username = ?");
             $stmt->bind_param("sssss", $new_username, $email, $contact, $role, $username);
         }
 
