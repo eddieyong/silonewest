@@ -1,4 +1,13 @@
 <?php
+session_start();
+require_once 'functions.php';
+
+// Check if user is logged in and has Admin role
+if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
+    header("Location: ../admin-login.html");
+    exit();
+}
+
 // Database connection
 $mysqli = new mysqli("localhost", "root", "", "fyp");
 
@@ -7,18 +16,85 @@ if ($mysqli->connect_error) {
     die("Connection failed: " . $mysqli->connect_error);
 }
 
-// Handle item deletion if requested
+// Handle item deletion
 if (isset($_POST['delete_item'])) {
     $item_id = $_POST['item_id'];
-    $stmt = $mysqli->prepare("DELETE FROM inventory WHERE id = ?");
+    
+    // Get item details before deletion
+    $stmt = $mysqli->prepare("SELECT inventory_item FROM inventory WHERE id = ?");
     $stmt->bind_param("i", $item_id);
     $stmt->execute();
-    $stmt->close();
+    $result = $stmt->get_result();
+    $item = $result->fetch_assoc();
+    
+    // Delete the item
+    $stmt = $mysqli->prepare("DELETE FROM inventory WHERE id = ?");
+    $stmt->bind_param("i", $item_id);
+    
+    if ($stmt->execute()) {
+        // Log the activity
+        logActivity($mysqli, 'inventory', "Deleted inventory item: " . $item['inventory_item']);
+        $_SESSION['success_msg'] = "Item deleted successfully!";
+    } else {
+        $_SESSION['error_msg'] = "Error deleting item.";
+    }
+    
+    header("Location: inventory.php");
+    exit();
 }
 
-// Handle search
+// Handle form submission for adding/updating items
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
+    $item_number = $_POST['item_number'];
+    $inventory_item = $_POST['inventory_item'];
+    $bar_code = $_POST['bar_code'];
+    $mfg_date = $_POST['mfg_date'];
+    $exp_date = $_POST['exp_date'];
+    $balance_brought_forward = $_POST['balance_brought_forward'];
+    $stock_in = $_POST['stock_in'];
+    $stock_out = $_POST['stock_out'];
+    $balance = $_POST['balance'];
+    $remarks = $_POST['remarks'];
+
+    if (isset($_POST['id'])) {
+        // Update existing item
+        $id = $_POST['id'];
+        $stmt = $mysqli->prepare("UPDATE inventory SET item_number=?, inventory_item=?, bar_code=?, mfg_date=?, exp_date=?, balance_brought_forward=?, stock_in=?, stock_out=?, balance=?, remarks=?, updated_at=CURRENT_TIMESTAMP WHERE id=?");
+        $stmt->bind_param("sssssiiiiis", $item_number, $inventory_item, $bar_code, $mfg_date, $exp_date, $balance_brought_forward, $stock_in, $stock_out, $balance, $remarks, $id);
+        
+        if ($stmt->execute()) {
+            // Log the activity
+            logActivity($mysqli, 'inventory', "Updated inventory item: $inventory_item");
+            $_SESSION['success_msg'] = "Item updated successfully!";
+        } else {
+            $_SESSION['error_msg'] = "Error updating item.";
+        }
+    } else {
+        // Add new item
+        $stmt = $mysqli->prepare("INSERT INTO inventory (item_number, inventory_item, bar_code, mfg_date, exp_date, balance_brought_forward, stock_in, stock_out, balance, remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssssiiiis", $item_number, $inventory_item, $bar_code, $mfg_date, $exp_date, $balance_brought_forward, $stock_in, $stock_out, $balance, $remarks);
+        
+        if ($stmt->execute()) {
+            // Log the activity
+            logActivity($mysqli, 'inventory', "Added new inventory item: $inventory_item");
+            $_SESSION['success_msg'] = "Item added successfully!";
+        } else {
+            $_SESSION['error_msg'] = "Error adding item.";
+        }
+    }
+
+    // Check for low stock and create alert
+    if ($balance < 10) {
+        logActivity($mysqli, 'stock_alert', "Low stock alert for $inventory_item (Current balance: $balance)");
+    }
+
+    header("Location: inventory.php");
+    exit();
+}
+
+// Get all inventory items
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$query = "SELECT id, item_number, inventory_item, bar_code, mfg_date, exp_date, balance_brought_forward, stock_in, stock_out, balance, remarks, created_at, updated_at FROM inventory";
+$query = "SELECT * FROM inventory";
 
 if (!empty($search)) {
     $search = "%$search%";
@@ -31,11 +107,6 @@ if (!empty($search)) {
     $result = $mysqli->query($query);
 }
 
-if (!$result) {
-    die("Query failed: " . $mysqli->error);
-}
-
-// Include the header
 include 'admin-header.php';
 ?>
 

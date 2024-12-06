@@ -1,7 +1,8 @@
 <?php
 session_start();
+require_once 'functions.php';
 
-// Check if the user is logged in and has the 'Admin' role
+// Check if user is logged in and has Admin role
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
     header("Location: ../admin-login.html");
     exit();
@@ -15,26 +16,34 @@ if ($mysqli->connect_error) {
     die("Connection failed: " . $mysqli->connect_error);
 }
 
-$message = '';
-$messageType = '';
-
 // Handle supplier deletion
 if (isset($_POST['delete_supplier'])) {
     $supplier_id = $_POST['supplier_id'];
+    
+    // Get supplier details before deletion
+    $stmt = $mysqli->prepare("SELECT company_name FROM supplier WHERE id = ?");
+    $stmt->bind_param("i", $supplier_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $supplier = $result->fetch_assoc();
+    
+    // Delete the supplier
     $stmt = $mysqli->prepare("DELETE FROM supplier WHERE id = ?");
     $stmt->bind_param("i", $supplier_id);
     
     if ($stmt->execute()) {
-        $message = "Supplier deleted successfully!";
-        $messageType = "success";
+        // Log the activity
+        logActivity($mysqli, 'system', "Deleted supplier: " . $supplier['company_name']);
+        $_SESSION['success_msg'] = "Supplier deleted successfully!";
     } else {
-        $message = "Error deleting supplier: " . $mysqli->error;
-        $messageType = "error";
+        $_SESSION['error_msg'] = "Error deleting supplier.";
     }
-    $stmt->close();
+    
+    header("Location: view-suppliers.php");
+    exit();
 }
 
-// Handle search
+// Get all suppliers
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $query = "SELECT * FROM supplier";
 
@@ -49,323 +58,301 @@ if (!empty($search)) {
     $result = $mysqli->query($query . " ORDER BY company_name");
 }
 
-if (!$result) {
-    die("Query failed: " . $mysqli->error);
-}
+include 'admin-header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Suppliers - SILO</title>
-    <link rel="stylesheet" href="../style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        .container {
-            padding: 20px 30px;
-            background: #f8f9fa;
-            min-height: calc(100vh - 72px);
-        }
+<style>
+    .container {
+        padding: 20px 30px;
+        background: #f8f9fa;
+        min-height: calc(100vh - 72px);
+    }
 
-        .page-header {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    .page-header {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        margin-bottom: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-        .page-title {
-            margin: 0;
-            font-size: 1.5rem;
-            color: #333;
-        }
+    .page-title {
+        margin: 0;
+        font-size: 1.5rem;
+        color: #333;
+    }
 
-        .header-buttons {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
+    .header-buttons {
+        display: flex;
+        gap: 10px;
+    }
 
-        .add-supplier-btn,
-        .export-btn {
-            padding: 10px 20px;
-            border-radius: 5px;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: background-color 0.3s;
-            color: white;
-        }
+    .export-btn {
+        padding: 8px 16px;
+        border-radius: 5px;
+        text-decoration: none;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: opacity 0.3s;
+    }
 
-        .add-supplier-btn {
-            background: #5c1f00;
-        }
+    .export-btn:hover {
+        opacity: 0.9;
+        color: white;
+    }
 
-        .export-btn.excel {
-            background: #217346;
-        }
+    .pdf {
+        background: #ff0000;
+    }
 
-        .export-btn.pdf {
-            background: #ff0000;
-        }
+    .message {
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+    }
 
-        .add-supplier-btn:hover {
-            background: #7a2900;
-        }
+    .success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
 
-        .export-btn.excel:hover {
-            background: #1a5c38;
-        }
+    .error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
 
-        .export-btn.pdf:hover {
-            background: #cc0000;
-        }
+    .search-bar {
+        margin-bottom: 20px;
+        display: flex;
+        gap: 10px;
+    }
 
-        .suppliers-table {
-            width: 100%;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            overflow: hidden;
-            overflow-x: auto;
-        }
+    .search-bar input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 1rem;
+    }
 
-        .suppliers-table table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 1200px;
-        }
+    .search-bar button {
+        padding: 10px 20px;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        .suppliers-table th,
-        .suppliers-table td {
-            padding: 15px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
+    .search-bar button:hover {
+        background: #0052a3;
+    }
 
-        .suppliers-table th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #333;
-            white-space: nowrap;
-        }
+    .suppliers-table {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
 
-        .suppliers-table tr:hover {
-            background: #f8f9fa;
-        }
+    .suppliers-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
 
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            white-space: nowrap;
-        }
+    .suppliers-table th,
+    .suppliers-table td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
 
-        .edit-btn,
-        .delete-btn {
-            padding: 6px 12px;
-            border-radius: 4px;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 0.9rem;
-        }
+    .suppliers-table th {
+        background: #f8f9fa;
+        font-weight: 500;
+        color: #333;
+    }
 
-        .edit-btn {
-            background: #e3f2fd;
-            color: #1976d2;
-        }
+    .suppliers-table tr:last-child td {
+        border-bottom: none;
+    }
 
-        .delete-btn {
-            background: #ffebee;
-            color: #c62828;
-            border: none;
-            cursor: pointer;
-        }
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+    }
 
-        .edit-btn:hover {
-            background: #bbdefb;
-        }
+    .edit-btn,
+    .delete-btn {
+        padding: 6px 12px;
+        border-radius: 4px;
+        text-decoration: none;
+        color: white;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition: opacity 0.3s;
+    }
 
-        .delete-btn:hover {
-            background: #ffcdd2;
-        }
+    .edit-btn {
+        background: #0066cc;
+    }
 
-        .message {
-            padding: 12px 15px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-            font-size: 14px;
-        }
+    .delete-btn {
+        background: #dc3545;
+        border: none;
+        cursor: pointer;
+    }
 
-        .message.success {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-            border: 1px solid #c8e6c9;
-        }
+    .edit-btn:hover,
+    .delete-btn:hover {
+        opacity: 0.9;
+        color: white;
+    }
 
-        .message.error {
-            background-color: #ffebee;
-            color: #c62828;
-            border: 1px solid #ffcdd2;
-        }
+    .add-supplier-btn {
+        padding: 8px 16px;
+        border-radius: 5px;
+        text-decoration: none;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: opacity 0.3s;
+        background: #5c1f00;
+    }
 
-        .search-bar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
+    .add-supplier-btn:hover {
+        opacity: 0.9;
+        color: white;
+    }
+</style>
 
-        .search-bar input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-
-        .search-bar input:focus {
-            border-color: #5c1f00;
-            outline: none;
-        }
-
-        .search-bar button {
-            padding: 10px 20px;
-            background: #5c1f00;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: background-color 0.3s;
-        }
-
-        .search-bar button:hover {
-            background: #7a2900;
-        }
-    </style>
-</head>
-<body>
-    <?php include 'admin-header.php'; ?>
-
-    <div class="container">
-        <div class="page-header">
-            <h1 class="page-title">Manage Suppliers</h1>
-            <div class="header-buttons">
-                <a href="export-suppliers-excel.php" class="export-btn excel">
-                    <i class="fas fa-file-excel"></i> Export to Excel
-                </a>
-                <a href="export-suppliers-pdf.php" class="export-btn pdf">
-                    <i class="fas fa-file-pdf"></i> Export to PDF
-                </a>
-                <a href="add-supplier.php" class="add-supplier-btn">
-                    <i class="fas fa-plus"></i> Add New Supplier
-                </a>
-            </div>
-        </div>
-
-        <?php if ($message): ?>
-            <div class="message <?php echo $messageType; ?>">
-                <?php echo htmlspecialchars($message); ?>
-            </div>
-        <?php endif; ?>
-
-        <div class="search-bar">
-            <input type="text" id="searchInput" placeholder="Search by company name, contact person, email, or phone..." 
-                   value="<?php echo htmlspecialchars($search); ?>">
-            <button type="button">
-                <i class="fas fa-search"></i> Search
-            </button>
-        </div>
-
-        <div class="suppliers-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Company Name</th>
-                        <th>Contact Person</th>
-                        <th>Email</th>
-                        <th>Phone</th>
-                        <th>Address</th>
-                        <th>Created At</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    <?php while($row = $result->fetch_assoc()): ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($row['company_name']); ?></td>
-                            <td><?php echo htmlspecialchars($row['contact_person']); ?></td>
-                            <td><?php echo htmlspecialchars($row['email']); ?></td>
-                            <td><?php echo htmlspecialchars($row['phone']); ?></td>
-                            <td><?php echo htmlspecialchars($row['address']); ?></td>
-                            <td><?php echo htmlspecialchars($row['created_at']); ?></td>
-                            <td>
-                                <div class="action-buttons">
-                                    <a href="edit-supplier.php?id=<?php echo $row['id']; ?>" class="edit-btn">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </a>
-                                    <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this supplier?');">
-                                        <input type="hidden" name="supplier_id" value="<?php echo $row['id']; ?>">
-                                        <button type="submit" name="delete_supplier" class="delete-btn">
-                                            <i class="fas fa-trash"></i> Delete
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">Manage Suppliers</h1>
+        <div class="header-buttons">
+            <a href="export-suppliers-pdf.php" class="export-btn pdf">
+                <i class="fas fa-file-pdf"></i> Export to PDF
+            </a>
+            <a href="add-supplier.php" class="add-supplier-btn">
+                <i class="fas fa-plus"></i> Add New Supplier
+            </a>
         </div>
     </div>
 
-    <script>
-    // Add debounce function to limit how often the search is performed
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
+    <?php if (isset($_SESSION['success_msg'])): ?>
+        <div class="message success">
+            <?php 
+            echo htmlspecialchars($_SESSION['success_msg']); 
+            unset($_SESSION['success_msg']);
+            ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['error_msg'])): ?>
+        <div class="message error">
+            <?php 
+            echo htmlspecialchars($_SESSION['error_msg']); 
+            unset($_SESSION['error_msg']);
+            ?>
+        </div>
+    <?php endif; ?>
+
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Search by company name, contact person, email, or phone..." 
+                value="<?php echo htmlspecialchars($search); ?>">
+        <button type="button">
+            <i class="fas fa-search"></i> Search
+        </button>
+    </div>
+
+    <div class="suppliers-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Company Name</th>
+                    <th>Contact Person</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Address</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <?php while($row = $result->fetch_assoc()): ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($row['company_name']); ?></td>
+                        <td><?php echo htmlspecialchars($row['contact_person']); ?></td>
+                        <td><?php echo htmlspecialchars($row['email']); ?></td>
+                        <td><?php echo htmlspecialchars($row['phone']); ?></td>
+                        <td><?php echo htmlspecialchars($row['address']); ?></td>
+                        <td><?php echo htmlspecialchars($row['created_at']); ?></td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="edit-supplier.php?id=<?php echo $row['id']; ?>" class="edit-btn">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this supplier?')">
+                                    <input type="hidden" name="supplier_id" value="<?php echo $row['id']; ?>">
+                                    <button type="submit" name="delete_supplier" class="delete-btn">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// Add debounce function to limit how often the search is performed
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
             clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
+            func(...args);
         };
-    }
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
 
-    // Function to perform the search
-    function performSearch() {
-        const searchValue = document.getElementById('searchInput').value;
-        
-        // Create XMLHttpRequest object
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', `search-suppliers.php?search=${encodeURIComponent(searchValue)}`, true);
-        
-        xhr.onload = function() {
-            if (this.status === 200) {
-                document.getElementById('tableBody').innerHTML = this.responseText;
-            }
-        };
-        
-        xhr.send();
-    }
+// Function to perform the search
+function performSearch() {
+    const searchValue = document.getElementById('searchInput').value;
+    
+    // Create XMLHttpRequest object
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', `search-suppliers.php?search=${encodeURIComponent(searchValue)}`, true);
+    
+    xhr.onload = function() {
+        if (this.status === 200) {
+            document.getElementById('tableBody').innerHTML = this.responseText;
+        }
+    };
+    
+    xhr.send();
+}
 
-    // Add event listener with debounce
-    document.getElementById('searchInput').addEventListener('input', debounce(performSearch, 300));
-    </script>
+// Add event listener with debounce
+document.getElementById('searchInput').addEventListener('input', debounce(performSearch, 300));
+</script>
 
-    <?php $mysqli->close(); ?>
-</body>
-</html> 
+<?php $mysqli->close(); ?> 
