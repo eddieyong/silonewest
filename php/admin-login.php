@@ -21,26 +21,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     // Prepare SQL query to prevent SQL injection
-    $stmt = $mysqli->prepare("SELECT password, role FROM admin WHERE username = ? AND password = ?");
-    $stmt->bind_param("ss", $username, $password);
+    $stmt = $mysqli->prepare("SELECT password, role FROM admin WHERE username = ?");
+    $stmt->bind_param("s", $username);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($result->num_rows == 1) {
         $row = $result->fetch_assoc();
+        
+        // Verify the password
+        if (password_verify($password, $row['password'])) {
+            // Check if the user is an admin
+            if ($row['role'] === 'Admin') {
+                // Start session
+                session_start();
+                $_SESSION['username'] = $username;
+                $_SESSION['role'] = 'Admin';
 
-        // Check if the user is an admin
-        if ($row['role'] === 'Admin') {
-            // Set a session or cookie if needed (optional)
-            session_start();
-            $_SESSION['username'] = $username;
-            $_SESSION['role'] = 'Admin';
-
-            // Redirect to the admin panel
-            header("Location: admin.php");
-            exit();
+                // Redirect to the admin panel
+                header("Location: admin.php");
+                exit();
+            } else {
+                echo "<script>alert('Access denied. Only admins can log in here.'); window.location.href = '../admin-login.html';</script>";
+                exit();
+            }
         } else {
-            echo "<script>alert('Access denied. Only admins can log in here.'); window.location.href = '../admin-login.html';</script>";
+            echo "<script>alert('Invalid username or password.'); window.location.href = '../admin-login.html';</script>";
             exit();
         }
     } else {

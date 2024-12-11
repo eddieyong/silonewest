@@ -1,4 +1,13 @@
 <?php
+session_start();
+require_once 'functions.php';
+
+// Check if user is logged in and has Admin role
+if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
+    header("Location: ../admin-login.html");
+    exit();
+}
+
 // Database connection
 $mysqli = new mysqli("localhost", "root", "", "fyp");
 
@@ -40,9 +49,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->bind_param("sssss", $username, $email, $password, $contact, $role);
             
             if ($stmt->execute()) {
-                $message = "User added successfully!";
-                $messageType = "success";
-                // Redirect after successful addition
+                // Log the activity
+                $description = "Added new {$role} user: {$username} (Email: {$email}, Contact: {$contact})";
+                logActivity($mysqli, 'user', $description);
+                
+                $_SESSION['success_msg'] = "User added successfully!";
                 header("Location: manage-users.php");
                 exit();
             } else {
@@ -162,7 +173,7 @@ include 'admin-header.php';
     <?php endif; ?>
 
     <div class="user-form">
-        <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+        <form method="POST" action="add-user.php">
             <div class="form-group">
                 <label for="username">Username *</label>
                 <input type="text" id="username" name="username" required>

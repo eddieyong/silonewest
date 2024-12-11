@@ -18,6 +18,11 @@ if ($mysqli->connect_error) {
 $message = '';
 $messageType = '';
 
+// Generate default ascending item number
+$result = $mysqli->query("SELECT MAX(CAST(item_number AS UNSIGNED)) AS max_item_number FROM inventory");
+$row = $result->fetch_assoc();
+$default_item_number = $row['max_item_number'] ? $row['max_item_number'] + 1 : 1; // Start from 1 if no items exist
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $item_number = trim($_POST['item_number']);
     $inventory_item = trim($_POST['inventory_item']);
@@ -25,39 +30,62 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $mfg_date = trim($_POST['mfg_date']);
     $exp_date = trim($_POST['exp_date']);
     $balance_brought_forward = intval($_POST['balance_brought_forward']);
-    $stock_in = intval($_POST['stock_in']);
-    $stock_out = intval($_POST['stock_out']);
+    $stock_in = 0; // Default value
+    $stock_out = 0; // Default value
     $remarks = trim($_POST['remarks']);
     
-    // Calculate balance
-    $balance = $balance_brought_forward + $stock_in - $stock_out;
-
-    // Insert new inventory item
-    $stmt = $mysqli->prepare("INSERT INTO inventory (item_number, inventory_item, bar_code, mfg_date, exp_date, balance_brought_forward, stock_in, stock_out, balance, remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssssiiiis", 
-        $item_number,
-        $inventory_item,
-        $bar_code,
-        $mfg_date,
-        $exp_date,
-        $balance_brought_forward,
-        $stock_in,
-        $stock_out,
-        $balance,
-        $remarks
-    );
-
-    if ($stmt->execute()) {
-        header("Location: inventory.php");
-        exit();
-    } else {
-        $message = "Error adding inventory item: " . $mysqli->error;
-        $messageType = "error";
-    }
+    // Validate unique item number
+    $stmt = $mysqli->prepare("SELECT COUNT(*) FROM inventory WHERE item_number = ?");
+    $stmt->bind_param("s", $item_number);
+    $stmt->execute();
+    $stmt->bind_result($count_item_number);
+    $stmt->fetch();
     $stmt->close();
+
+    // Validate unique barcode
+    $stmt = $mysqli->prepare("SELECT COUNT(*) FROM inventory WHERE bar_code = ?");
+    $stmt->bind_param("s", $bar_code);
+    $stmt->execute();
+    $stmt->bind_result($count_bar_code);
+    $stmt->fetch();
+    $stmt->close();
+
+    if ($count_item_number > 0) {
+        $message = "The item number '$item_number' already exists. Please choose another.";
+        $messageType = "error";
+    } elseif (!empty($bar_code) && $count_bar_code > 0) {
+        $message = "The barcode '$bar_code' already exists. Please choose another.";
+        $messageType = "error";
+    } else {
+        // Calculate balance
+        $balance = $balance_brought_forward + $stock_in - $stock_out;
+
+        // Insert new inventory item
+        $stmt = $mysqli->prepare("INSERT INTO inventory (item_number, inventory_item, bar_code, mfg_date, exp_date, balance_brought_forward, stock_in, stock_out, balance, remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssssiiiis", 
+            $item_number,
+            $inventory_item,
+            $bar_code,
+            $mfg_date,
+            $exp_date,
+            $balance_brought_forward,
+            $stock_in,
+            $stock_out,
+            $balance,
+            $remarks
+        );
+
+        if ($stmt->execute()) {
+            header("Location: inventory.php");
+            exit();
+        } else {
+            $message = "Error adding inventory item: " . $mysqli->error;
+            $messageType = "error";
+        }
+        $stmt->close();
+    }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -233,6 +261,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             color: #c62828;
             border: 1px solid #ffcdd2;
         }
+        .readonly-input {
+    background-color: #f2f2f2; /* Light gray background */
+    color: #888; /* Gray text */
+    cursor: not-allowed; /* Show "not-allowed" cursor */
+}
+
+.read-only-note {
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 5px;
+    display: block;
+}
+
     </style>
 </head>
 <body>
@@ -267,70 +308,74 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <?php endif; ?>
 
         <div class="inventory-form">
-            <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="item_number">Item Number *</label>
-                        <input type="text" id="item_number" name="item_number" required>
-                    </div>
+    <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+        <div class="form-row">
+        <div class="form-group">
+             <label for="item_number">Item Number *</label>
+    <input type="text"  id="item_number"   name="item_number" value="<?php echo $default_item_number; ?>" readonly class="readonly-input" title="This field cannot be edited">
+    <small class="read-only-note">This field cannot be edited.</small>
+</div>
 
-                    <div class="form-group">
-                        <label for="inventory_item">Inventory Item *</label>
-                        <input type="text" id="inventory_item" name="inventory_item" required>
-                    </div>
-                </div>
 
-                <div class="form-group">
-                    <label for="bar_code">Bar Code</label>
-                    <input type="text" id="bar_code" name="bar_code">
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="mfg_date">Manufacturing Date</label>
-                        <input type="date" id="mfg_date" name="mfg_date">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="exp_date">Expiry Date</label>
-                        <input type="date" id="exp_date" name="exp_date">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="balance_brought_forward">Balance B/F *</label>
-                        <input type="number" id="balance_brought_forward" name="balance_brought_forward" required min="0">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="stock_in">Stock In *</label>
-                        <input type="number" id="stock_in" name="stock_in" required min="0">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="stock_out">Stock Out *</label>
-                        <input type="number" id="stock_out" name="stock_out" required min="0">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="remarks">Remarks</label>
-                        <textarea id="remarks" name="remarks" rows="3"></textarea>
-                    </div>
-                </div>
-
-                <div class="form-actions">
-                    <a href="inventory.php" class="btn-cancel">Cancel</a>
-                    <button type="submit" class="btn-submit">Add Item</button>
-                </div>
-            </form>
+            <div class="form-group">
+                <label for="inventory_item">Item Name *</label>
+                <input type="text" id="inventory_item" name="inventory_item" required>
+            </div>
         </div>
-    </div>
+
+        <div class="form-group">
+            <label for="bar_code">Bar Code</label>
+            <input type="text" id="bar_code" name="bar_code">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="mfg_date">Manufacturing Date</label>
+                <input type="date" id="mfg_date" name="mfg_date">
+            </div>
+
+            <div class="form-group">
+                <label for="exp_date">Expiry Date</label>
+                <input type="date" id="exp_date" name="exp_date">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="balance_brought_forward">Balance B/F *</label>
+                <input type="number" id="balance_brought_forward" name="balance_brought_forward" required min="0" value="0"  readonly class="readonly-input" title="This field cannot be edited">
+                <small class="read-only-note">This field cannot be edited.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="stock_in">Stock In</label>
+                <input type="number" id="stock_in" name="stock_in" value="0" >
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="stock_out">Stock Out</label>
+                <input type="number" id="stock_out" name="stock_out" value="0"  readonly class="readonly-input" title="This field cannot be edited">
+                <small class="read-only-note">This field cannot be edited.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="remarks">Description</label>
+                <textarea id="remarks" name="remarks" rows="3"></textarea>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="inventory.php" class="btn-cancel">Cancel</a>
+            <button type="submit" class="btn-submit">Add Item</button>
+        </div>
+    </form>
+</div>
+
+
 
     <script>
-        // Add any necessary JavaScript here
     </script>
 </body>
 </html>
