@@ -15,6 +15,8 @@ if ($mysqli->connect_error) {
     die("Connection failed: " . $mysqli->connect_error);
 }
 
+require_once 'functions.php'; // Add this line to include functions.php
+
 $message = '';
 $messageType = '';
 
@@ -30,8 +32,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $mfg_date = trim($_POST['mfg_date']);
     $exp_date = trim($_POST['exp_date']);
     $balance_brought_forward = intval($_POST['balance_brought_forward']);
-    $stock_in = 0; // Default value
-    $stock_out = 0; // Default value
+    $stock_in = intval($_POST['stock_in']); // Get stock_in from form
+    $stock_out = intval($_POST['stock_out']);
     $remarks = trim($_POST['remarks']);
     
     // Validate unique item number
@@ -60,26 +62,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Calculate balance
         $balance = $balance_brought_forward + $stock_in - $stock_out;
 
-        // Insert new inventory item
-        $stmt = $mysqli->prepare("INSERT INTO inventory (item_number, inventory_item, bar_code, mfg_date, exp_date, balance_brought_forward, stock_in, stock_out, balance, remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("sssssiiiis", 
-            $item_number,
-            $inventory_item,
-            $bar_code,
-            $mfg_date,
-            $exp_date,
-            $balance_brought_forward,
-            $stock_in,
-            $stock_out,
-            $balance,
-            $remarks
-        );
+        // Start transaction
+        $mysqli->begin_transaction();
 
-        if ($stmt->execute()) {
-            header("Location: inventory.php");
-            exit();
-        } else {
-            $message = "Error adding inventory item: " . $mysqli->error;
+        try {
+            // Insert new inventory item
+            $stmt = $mysqli->prepare("INSERT INTO inventory (item_number, inventory_item, bar_code, mfg_date, exp_date, balance_brought_forward, stock_in, stock_out, balance, remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssssiiiis", 
+                $item_number,
+                $inventory_item,
+                $bar_code,
+                $mfg_date,
+                $exp_date,
+                $balance_brought_forward,
+                $stock_in,
+                $stock_out,
+                $balance,
+                $remarks
+            );
+
+            if ($stmt->execute()) {
+                // Log the activity
+                if ($stock_in > 0) {
+                    $description = "Added new item '{$inventory_item}' with initial stock of {$stock_in} units";
+                    logActivity($mysqli, 'stock_in', $description);
+                } else {
+                    $description = "Added new item '{$inventory_item}' to inventory";
+                    logActivity($mysqli, 'inventory', $description);
+                }
+                
+                $mysqli->commit();
+                header("Location: inventory.php");
+                exit();
+            } else {
+                throw new Exception("Error adding inventory item: " . $mysqli->error);
+            }
+        } catch (Exception $e) {
+            $mysqli->rollback();
+            $message = $e->getMessage();
             $messageType = "error";
         }
         $stmt->close();

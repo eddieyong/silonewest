@@ -454,6 +454,34 @@ include 'admin-header.php';
         border: 1px solid #f5c6cb;
         color: #721c24;
     }
+
+    .po-btn,
+    .do-btn {
+        padding: 10px 20px;
+        border-radius: 5px;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background-color 0.3s;
+        color: white;
+    }
+
+    .po-btn {
+        background: #28a745;
+    }
+
+    .do-btn {
+        background: #17a2b8;
+    }
+
+    .po-btn:hover {
+        background: #218838;
+    }
+
+    .do-btn:hover {
+        background: #138496;
+    }
 </style>
 
 <div class="container">
@@ -474,6 +502,12 @@ include 'admin-header.php';
             </a>
             <a href="#" class="stock-btn" id="openStockOutPopup">
                 <i class="fas fa-arrow-up"></i> Stock Out
+            </a>
+            <a href="purchase-orders.php" class="po-btn">
+                <i class="fas fa-file-invoice"></i> Purchase Orders
+            </a>
+            <a href="delivery-orders.php" class="do-btn">
+                <i class="fas fa-truck"></i> Delivery Orders
             </a>
         </div>
     </div>

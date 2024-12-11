@@ -161,11 +161,13 @@ include 'admin-header.php';
             <div class="form-row">
                 <div class="form-group">
                     <label for="stock_in">Stock In</label>
-                    <input type="number" id="stock_in" name="stock_in" value="<?php echo $item['stock_in']; ?>" required>
+                    <input type="number" id="stock_in" name="stock_in" value="<?php echo $item['stock_in']; ?>" readonly class="readonly-input" title="This field cannot be edited">
+                    <small class="read-only-note">Use Stock In/Out function to modify stock levels.</small>
                 </div>
                 <div class="form-group">
                     <label for="stock_out">Stock Out</label>
-                    <input type="number" id="stock_out" name="stock_out" value="<?php echo $item['stock_out']; ?>" required>
+                    <input type="number" id="stock_out" name="stock_out" value="<?php echo $item['stock_out']; ?>" readonly class="readonly-input" title="This field cannot be edited">
+                    <small class="read-only-note">Use Stock In/Out function to modify stock levels.</small>
                 </div>
             </div>
 
@@ -302,6 +304,19 @@ include 'admin-header.php';
         background-color: #d4edda;
         border: 1px solid #c3e6cb;
         color: #155724;
+    }
+
+    .readonly-input {
+        background-color: #f2f2f2;
+        color: #666;
+        cursor: not-allowed;
+    }
+
+    .read-only-note {
+        color: #666;
+        font-size: 0.9rem;
+        margin-top: 5px;
+        display: block;
     }
 </style>
 </body>
