@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Consignment Form - SILO</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="img/icon.png" type="image/png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .form-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+        }
+        .volumetrics-calculator {
+            background-color: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-top: 2rem;
+        }
+        .calculate-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 2rem;
+            border-radius: 4px;
+        }
+        input[readonly] {
+            background-color: #e9ecef !important;
+            cursor: not-allowed;
+        }
+        .formula-text {
+            color: #6c757d;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <a href="index.html">
+                <img src="img/logo.png" alt="SILO Logo">
+            </a>
+        </div>
+        <nav class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="about.html">About Us</a>
+            <a href="services.html">Our Services</a>
+            <a href="order.html">Order With Us</a>
+            <a href="contact.html">Contact Us</a>
+            <div class="dropdown">
+                <a href="mainlogin.html">Login</a>
+                <div class="dropdown-content">
+                    <a href="customer-login.html">Customer Login</a>
+                    <a href="admin-login.html">Admin Login</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container form-container">
+        <h1 class="text-center mb-4">E-Consignment Form</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="order.html">Order With Us</a></li>
+                <li class="breadcrumb-item active">E-Consignment Form</li>
+            </ol>
+        </nav>
+
+        <form>
+            <div class="mb-4">
+                <label class="form-label">Choose Type of Shipment</label>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="shipmentType" id="domestic" checked>
+                    <label class="form-check-label" for="domestic">Domestic Shipping</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="shipmentType" id="international">
+                    <label class="form-check-label" for="international">International Shipping</label>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <h4>Sender</h4>
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Country</label>
+                        <input type="text" class="form-control" value="Malaysia" readonly>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label class="form-label">Postcode</label>
+                                <input type="text" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label class="form-label">State</label>
+                                <input type="text" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <h4>Receiver</h4>
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Country</label>
+                        <input type="text" class="form-control" value="Malaysia" readonly>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label class="form-label">Postcode</label>
+                                <input type="text" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label class="form-label">State</label>
+                                <input type="text" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Weight (kg)</label>
+                <input type="number" class="form-control" style="max-width: 200px;">
+            </div>
+
+            <div class="volumetrics-calculator">
+                <h5 class="mb-3">Volumetrics Calculator</h5>
+                <div class="row align-items-center g-3">
+                    <div class="col-md-2">
+                        <input type="number" class="form-control" id="width" placeholder="Width (cm)" min="0" step="0.1">
+                    </div>
+                    <div class="col-md-1 text-center">×</div>
+                    <div class="col-md-2">
+                        <input type="number" class="form-control" id="length" placeholder="Length (cm)" min="0" step="0.1">
+                    </div>
+                    <div class="col-md-1 text-center">×</div>
+                    <div class="col-md-2">
+                        <input type="number" class="form-control" id="height" placeholder="Height (cm)" min="0" step="0.1">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Dimensional Weight (kg)</label>
+                        <input type="text" class="form-control" id="dimensionalWeight" readonly>
+                        <div class="formula-text">Formula: (Length × Width × Height) ÷ 6000</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Actual Weight (kg)</label>
+                        <input type="number" class="form-control" id="actualWeight" min="0" step="0.1">
+                    </div>
+                </div>
+                
+                <div class="shipping-rate mt-4">
+                    <h6>Shipping Rate Calculation</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Base Rate (RM)</label>
+                            <input type="number" class="form-control" id="baseRate" min="0" step="0.1">
+                            <div class="formula-text">Based on distance</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Total Weight (kg)</label>
+                            <input type="text" class="form-control" id="totalWeight" readonly>
+                            <div class="formula-text">Weight + Dimensional Weight</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Additional Fees (RM)</label>
+                            <input type="number" class="form-control" id="additionalFees" min="0" step="0.1" placeholder="Optional">
+                            <div class="formula-text">Surcharge, handling, tax, etc.</div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Total Shipping Cost (RM)</label>
+                            <input type="text" class="form-control" id="totalShippingCost" readonly>
+                            <div class="formula-text">Base Rate + (Weight + Dimensional Weight) + Additional Fees</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-3">
+                    <button type="button" class="calculate-btn" id="calculateBtn">Calculate</button>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <h5>What are the contents of the shipment?</h5>
+                <div class="mb-3">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="contentType" id="documents">
+                        <label class="form-check-label" for="documents">Documents</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="contentType" id="packages">
+                        <label class="form-check-label" for="packages">Packages</label>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Please provide additional details on the contents of the shipment.</label>
+                    <textarea class="form-control" rows="4"></textarea>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Schedule a date for the shipment</label>
+                    <div class="input-group" style="max-width: 300px;">
+                        <input type="date" class="form-control">
+                        <span class="input-group-text">
+                            <i class="fas fa-calendar"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Select a mode of payment:</label>
+                    <div class="payment-options p-3 bg-light rounded">
+                        <!-- Payment options will be added here -->
+                        <div class="alert alert-info">
+                            Payment options will be displayed here
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-danger px-4 me-2">Submit</button>
+                    <button type="button" class="btn btn-secondary px-4">Cancel</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <h3>Contact Us</h3>
+                <p>HQ Office Contact: <a href="tel:+60367317663">+03-6731 7663</a></p>
+                <p>Email: <a href="mailto:service@silomsdnbhd.com">service@silomsdnbhd.com</a></p>
+                <p><a href="https://wa.me/60367317663" class="green-button" target="_blank" rel="noopener" title="Chat with us on WhatsApp"> <img src="img/whatsapp.png" alt="WhatsApp" class="cwhatsapp-icon">WhatsApp: Chat with us !!</img></a></p>
+            </div>
+            <div class="footer-right">
+                <h3>Follow Us On Our Social Media:</h3>
+                <div class="social-icons">
+                    <a href="https://www.facebook.com/profile.php/?id=100063545650222" class="social-icon" target="_blank" rel="noopener" title="Visit our Facebook page"><i class="fab fa-facebook-f"></i></a>
+                    <a href="https://www.instagram.com/siloforyou/" class="social-icon" target="_blank" rel="noopener" title="Visit our Instagram page"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>©2024 Silo (M) Sdn. Bhd. All Rights Reserved</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const calculateBtn = document.getElementById('calculateBtn');
+            
+            calculateBtn.addEventListener('click', function() {
+                // Get dimensions
+                const length = parseFloat(document.getElementById('length').value) || 0;
+                const width = parseFloat(document.getElementById('width').value) || 0;
+                const height = parseFloat(document.getElementById('height').value) || 0;
+                const actualWeight = parseFloat(document.getElementById('actualWeight').value) || 0;
+                const baseRate = parseFloat(document.getElementById('baseRate').value) || 0;
+                const additionalFees = parseFloat(document.getElementById('additionalFees').value) || 0;
+
+                // Calculate dimensional weight
+                const dimensionalWeight = (length * width * height) / 6000;
+                document.getElementById('dimensionalWeight').value = dimensionalWeight.toFixed(2);
+
+                // Calculate total weight (actual weight + dimensional weight)
+                const totalWeight = actualWeight + dimensionalWeight;
+                document.getElementById('totalWeight').value = totalWeight.toFixed(2);
+
+                // Calculate total shipping cost
+                const totalShippingCost = baseRate + totalWeight + additionalFees;
+                document.getElementById('totalShippingCost').value = totalShippingCost.toFixed(2);
+            });
+
+            // Add input validation
+            const numericInputs = document.querySelectorAll('input[type="number"]');
+            numericInputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    if (this.value < 0) this.value = 0;
+                });
+            });
+        });
+    </script>
+</body>
+</html> 
