@@ -21,7 +21,7 @@ if (isset($_POST['delete_vehicle'])) {
     $vehicle_id = $_POST['vehicle_id'];
     
     // Get vehicle details before deletion
-    $stmt = $mysqli->prepare("SELECT vehicle_number FROM vehicles WHERE id = ?");
+    $stmt = $mysqli->prepare("SELECT * FROM vehicles WHERE id = ?");
     $stmt->bind_param("i", $vehicle_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -32,11 +32,22 @@ if (isset($_POST['delete_vehicle'])) {
     $stmt->bind_param("i", $vehicle_id);
     
     if ($stmt->execute()) {
-        // Log the activity
-        logActivity($mysqli, 'system', "Deleted vehicle: " . $vehicle['vehicle_number']);
-        $_SESSION['success_msg'] = "Vehicle deleted successfully!";
+        // Log the activity with detailed information
+        $details = array(
+            "Vehicle Number: {$vehicle['vehicle_number']}",
+            "Description: {$vehicle['description']}",
+            "Insurance Expiry: {$vehicle['insurance_expiry']}",
+            "Road Tax Expiry: {$vehicle['roadtax_expiry']}"
+        );
+        if ($vehicle['gps']) $details[] = "GPS: {$vehicle['gps']}";
+        if ($vehicle['remarks']) $details[] = "Remarks: {$vehicle['remarks']}";
+        
+        $activityLog = "Deleted vehicle with details: " . implode(", ", $details);
+        logActivity($mysqli, 'vehicle', $activityLog);
+        
+        $_SESSION['vehicle_success_msg'] = "Vehicle deleted successfully!";
     } else {
-        $_SESSION['error_msg'] = "Error deleting vehicle.";
+        $_SESSION['vehicle_error_msg'] = "Error deleting vehicle.";
     }
     
     header("Location: view-vehicles.php");
@@ -118,7 +129,7 @@ include 'admin-header.php';
     transition: opacity 0.3s;
 }
 
-.export-btn:hover {
+.export-btn pdf:hover {
     opacity: 0.9;
     color: white;
 }
@@ -249,35 +260,45 @@ include 'admin-header.php';
     color: #ffc107;
     font-weight: 500;
 }
+.export-btn.excel {
+        background: green;
+    }
+
+    .export-btn.excel:hover {
+        background: #004000;
+    }
 </style>
 
 <div class="container">
     <div class="page-header">
         <h1 class="page-title">Manage Vehicles</h1>
         <div class="header-buttons">
+            <a href="add-vehicle.php" class="add-vehicle-btn">
+                <i class="fas fa-plus"></i> Add New Vehicle
+            </a>
             <a href="export-vehicles-pdf.php" class="export-btn pdf">
                 <i class="fas fa-file-pdf"></i> Export to PDF
             </a>
-            <a href="add-vehicle.php" class="add-vehicle-btn">
-                <i class="fas fa-plus"></i> Add New Vehicle
+            <a href="export-vehicles-excel.php" class="export-btn excel">
+                <i class="fas fa-file-excel"></i> Export to Excel
             </a>
         </div>
     </div>
 
-    <?php if (isset($_SESSION['success_msg'])): ?>
+    <?php if (isset($_SESSION['vehicle_success_msg'])): ?>
         <div class="message success">
             <?php 
-            echo htmlspecialchars($_SESSION['success_msg']); 
-            unset($_SESSION['success_msg']);
+                echo $_SESSION['vehicle_success_msg'];
+                unset($_SESSION['vehicle_success_msg']);
             ?>
         </div>
     <?php endif; ?>
 
-    <?php if (isset($_SESSION['error_msg'])): ?>
+    <?php if (isset($_SESSION['vehicle_error_msg'])): ?>
         <div class="message error">
             <?php 
-            echo htmlspecialchars($_SESSION['error_msg']); 
-            unset($_SESSION['error_msg']);
+                echo $_SESSION['vehicle_error_msg'];
+                unset($_SESSION['vehicle_error_msg']);
             ?>
         </div>
     <?php endif; ?>

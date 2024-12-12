@@ -692,6 +692,26 @@ include 'admin-header.php';
         background: #ffcdd2 !important;
         color: #b71c1c !important;
     }
+
+    /* Add these styles in the style section */
+    .alert {
+        padding: 15px;
+        margin-bottom: 20px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+    }
+
+    .alert-success {
+        color: #0f5132;
+        background-color: #d1e7dd;
+        border-color: #badbcc;
+    }
+
+    .alert-danger {
+        color: #842029;
+        background-color: #f8d7da;
+        border-color: #f5c2c7;
+    }
 </style>
 
 <div class="container">

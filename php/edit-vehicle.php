@@ -18,6 +18,18 @@ if ($mysqli->connect_error) {
 
 $id = isset($_GET['id']) ? $_GET['id'] : 0;
 
+// Get vehicle data
+$stmt = $mysqli->prepare("SELECT * FROM vehicles WHERE id = ?");
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$result = $stmt->get_result();
+$vehicle = $result->fetch_assoc();
+
+if (!$vehicle) {
+    header("Location: view-vehicles.php");
+    exit();
+}
+
 // Handle form submission
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $vehicle_number = $_POST['vehicle_number'];
@@ -27,28 +39,41 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $gps = $_POST['gps'] ?: NULL;
     $remarks = $_POST['remarks'] ?: NULL;
 
+    // Track changes
+    $changes = array();
+    if ($vehicle['vehicle_number'] !== $vehicle_number) {
+        $changes[] = "vehicle number from '{$vehicle['vehicle_number']}' to '{$vehicle_number}'";
+    }
+    if ($vehicle['description'] !== $description) {
+        $changes[] = "description from '{$vehicle['description']}' to '{$description}'";
+    }
+    if ($vehicle['insurance_expiry'] !== $insurance_expiry) {
+        $changes[] = "insurance expiry from '{$vehicle['insurance_expiry']}' to '{$insurance_expiry}'";
+    }
+    if ($vehicle['roadtax_expiry'] !== $roadtax_expiry) {
+        $changes[] = "road tax expiry from '{$vehicle['roadtax_expiry']}' to '{$roadtax_expiry}'";
+    }
+    if (($vehicle['gps'] ?: '') !== ($gps ?: '')) {
+        $changes[] = "GPS from '{$vehicle['gps']}' to '{$gps}'";
+    }
+    if (($vehicle['remarks'] ?: '') !== ($remarks ?: '')) {
+        $changes[] = "remarks from '{$vehicle['remarks']}' to '{$remarks}'";
+    }
+
     $stmt = $mysqli->prepare("UPDATE vehicles SET vehicle_number=?, insurance_expiry=?, roadtax_expiry=?, description=?, gps=?, remarks=? WHERE id=?");
     $stmt->bind_param("ssssssi", $vehicle_number, $insurance_expiry, $roadtax_expiry, $description, $gps, $remarks, $id);
     
     if ($stmt->execute()) {
-        logActivity($mysqli, 'system', "Updated vehicle: $vehicle_number");
-        $_SESSION['success_msg'] = "Vehicle updated successfully!";
+        // Log the activity with detailed changes
+        if (!empty($changes)) {
+            $changeLog = "Updated vehicle {$vehicle['vehicle_number']}: Changed " . implode(", ", $changes);
+            logActivity($mysqli, 'vehicle', $changeLog);
+        }
+        $_SESSION['vehicle_success_msg'] = "Vehicle updated successfully!";
     } else {
-        $_SESSION['error_msg'] = "Error updating vehicle: " . $mysqli->error;
+        $_SESSION['vehicle_error_msg'] = "Error updating vehicle: " . $mysqli->error;
     }
     
-    header("Location: view-vehicles.php");
-    exit();
-}
-
-// Get vehicle data
-$stmt = $mysqli->prepare("SELECT * FROM vehicles WHERE id = ?");
-$stmt->bind_param("i", $id);
-$stmt->execute();
-$result = $stmt->get_result();
-$vehicle = $result->fetch_assoc();
-
-if (!$vehicle) {
     header("Location: view-vehicles.php");
     exit();
 }

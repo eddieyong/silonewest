@@ -212,14 +212,155 @@ include 'admin-header.php';
         color: #333;
         white-space: pre-wrap;
     }
+
+    .btn-print {
+        background: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-right: 10px;
+        transition: background-color 0.3s;
+    }
+
+    .btn-print:hover {
+        background: #218838;
+        color: white;
+        text-decoration: none;
+    }
+
+    @media print {
+        .admin-header,
+        .btn-back,
+        .btn-print,
+        .page-header,
+        .po-info .status,
+        .status-badge,
+        nav,
+        header,
+        footer,
+        .admin-name,
+        .url-info {
+            display: none !important;
+        }
+
+        /* Hide status information */
+        .po-info:has(> label:contains("Status")),
+        div[class*="status"],
+        .status,
+        div:contains("localhost") {
+            display: none !important;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            padding: 0;
+            background: none;
+            min-height: auto;
+        }
+
+        .po-details {
+            box-shadow: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+
+        .print-header {
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            margin-bottom: 40px;
+            padding-top: 20px;
+        }
+
+        .print-header img {
+            width: 200px;
+            margin-bottom: 20px;
+        }
+
+        .print-header .company-address {
+            font-size: 1rem;
+            line-height: 1.5;
+            border-bottom: 2px solid #000;
+            padding-bottom: 20px;
+            width: 100%;
+        }
+
+        .items-table {
+            margin-top: 30px;
+            width: 100%;
+        }
+
+        .items-table th {
+            background: none !important;
+            color: black;
+            border-bottom: 2px solid #000;
+        }
+
+        .items-table th,
+        .items-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .grand-total {
+            margin-top: 30px;
+            border-top: 2px solid #000;
+            padding-top: 15px;
+            text-align: right;
+            font-weight: bold;
+        }
+
+        /* Prevent URLs from showing in print */
+        @page {
+            margin: 0.5cm;
+        }
+
+        @page :first {
+            margin-bottom: 0;
+        }
+    }
+
+    /* Hide elements in normal view */
+    .url-info,
+    .admin-name {
+        display: none;
+    }
+
+    .print-header {
+        display: none;
+    }
 </style>
 
 <div class="container">
+    <div class="print-header">
+        <img src="../img/logo.png" alt="SILO Logo">
+        <div class="company-address">
+            <p>No.112, Jalan 28/10A,<br>
+               Taman Perindustrian IKS Mukim Batu,<br>
+               68100 Kuala Lumpur, Malaysia</p>
+        </div>
+    </div>
+
     <div class="page-header">
         <h1 class="page-title">View Purchase Order</h1>
-        <a href="purchase-orders.php" class="btn-back">
-            <i class="fas fa-arrow-left"></i> Back to Purchase Orders
-        </a>
+        <div>
+            <a href="export-po-pdf.php?po=<?php echo urlencode($po_details['po_number']); ?>" class="btn-print" style="background: #28a745;">
+                <i class="fas fa-file-pdf"></i> Export PDF
+            </a>
+            <a href="purchase-orders.php" class="btn-back">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+        </div>
     </div>
 
     <div class="po-details">
@@ -237,12 +378,6 @@ include 'admin-header.php';
                     <label>Delivery Address</label>
                     <div class="value"><?php echo nl2br(htmlspecialchars($po_details['delivery_address'])); ?></div>
                 </div>
-            </div>
-            <div>
-                <div class="po-info">
-                    <label>Order Date</label>
-                    <div class="value"><?php echo date('M d, Y', strtotime($po_details['order_date'])); ?></div>
-                </div>
                 <div class="po-info">
                     <label>Status</label>
                     <div class="value">
@@ -250,6 +385,12 @@ include 'admin-header.php';
                             <?php echo htmlspecialchars($po_details['status']); ?>
                         </span>
                     </div>
+                </div>
+            </div>
+            <div>
+                <div class="po-info">
+                    <label>Order Date</label>
+                    <div class="value"><?php echo date('M d, Y', strtotime($po_details['order_date'])); ?></div>
                 </div>
             </div>
         </div>

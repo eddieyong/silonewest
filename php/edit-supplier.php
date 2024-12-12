@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once 'functions.php';
 
 // Check if the user is logged in and has the 'Admin' role
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
@@ -37,6 +38,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $city = trim($_POST['city']);
     $postcode = trim($_POST['postcode']);
 
+    // Get old supplier data for comparison
+    $stmt = $mysqli->prepare("SELECT * FROM supplier WHERE id = ?");
+    $stmt->bind_param("i", $supplier_id);
+    $stmt->execute();
+    $old_supplier = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
     // Update supplier
     $stmt = $mysqli->prepare("UPDATE supplier SET company_name = ?, contact_person = ?, email = ?, phone = ?, address = ?, city = ?, postcode = ? WHERE id = ?");
     $stmt->bind_param("sssssssi", 
@@ -51,6 +59,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     );
 
     if ($stmt->execute()) {
+        // Log the activity with details of what changed
+        $changes = array();
+        if ($old_supplier['company_name'] !== $company_name) $changes[] = "company name to '{$company_name}'";
+        if ($old_supplier['contact_person'] !== $contact_person) $changes[] = "contact person to '{$contact_person}'";
+        if ($old_supplier['email'] !== $email) $changes[] = "email to '{$email}'";
+        if ($old_supplier['phone'] !== $phone) $changes[] = "phone to '{$phone}'";
+        
+        $description = "Updated supplier: {$company_name}";
+        if (!empty($changes)) {
+            $description .= " (Changed " . implode(", ", $changes) . ")";
+        }
+        
+        logActivity($mysqli, 'supplier', $description);
+        $_SESSION['success_msg'] = "Supplier updated successfully!";
         header("Location: view-suppliers.php");
         exit();
     } else {
