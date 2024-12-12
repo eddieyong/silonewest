@@ -10,42 +10,33 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client Dashboard - SILO</title>
+    <title>Admin Dashboard - SILO</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<style>
-    .top-nav {
-            background: #5c1f00;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-    </style>
 <body>
-<nav class="top-nav">
+    <header class="header">
         <div class="logo">
-            <a href="user-dashboard.php">
-                <img src="../img/logo.png" alt="SILO Logo" style="height: 40px;">
-            </a>
+        <a href="customer-dashboard.php">
+            <img src="img/logo.png" alt="SILO Logo">
+        </a>
         </div>
-        <div class="nav-items">
-            <a href="user-dashboard.php"><i class="fas fa-home"></i> Dashboard</a>
-            <a href="place-order.php"><i class="fas fa-shopping-cart"></i> Place Order</a>
-            <a href="my-orders.php"><i class="fas fa-list"></i> My Orders</a>
-            <a href="track-order.php"><i class="fas fa-truck"></i> Track Order</a>
-            <a href="customer-profile.php"><i class="fas fa-user"></i> Profile</a>
-            <a href="logout.php" class="logout-btn" onclick="return confirm('Are you sure you want to logout?');">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
-        </div>
-    </nav>
+        <nav class="nav-links">
+            <a href="customer-dashboard.php">Home</a>
+            <a href="cus-view-orders.php">View Orders</a>
+            <a href="track-order.php">Track Order</a>
+            <a href="report-summary.php">Report Summary</a>
+            <div class="dropdown">
+                <a href="#">Account</a>
+                <div class="dropdown-content">
+                    <a href="customer-profile.php">Customer Profile</a>
+                    <a href="logout.php">Logout</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
    <br>
         <h1>Welcome, <?php echo htmlspecialchars($username); ?>!</h1>
         <p>You've logged in as an <strong>customer</strong>.</p>

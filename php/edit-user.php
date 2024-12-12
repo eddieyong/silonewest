@@ -1,13 +1,4 @@
 <?php
-session_start();
-require_once 'functions.php';
-
-// Check if user is logged in and has Admin role
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
-    header("Location: ../admin-login.html");
-    exit();
-}
-
 // Database connection
 $mysqli = new mysqli("localhost", "root", "", "fyp");
 
@@ -57,9 +48,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $contact = trim($_POST['contact']);
     $role = trim($_POST['role']);
 
-    // Store old values for comparison
-    $old_values = $user;
-
     // Validation
     if (empty($new_username)) {
         $errors[] = "Username is required";
@@ -96,22 +84,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         if ($stmt->execute()) {
-            // Track what changed
-            $changes = array();
-            if ($username !== $new_username) $changes[] = "username from '{$username}' to '{$new_username}'";
-            if ($old_values['email'] !== $email) $changes[] = "email from '{$old_values['email']}' to '{$email}'";
-            if ($old_values['contact'] !== $contact) $changes[] = "contact from '{$old_values['contact']}' to '{$contact}'";
-            if ($old_values['role'] !== $role) $changes[] = "role from '{$old_values['role']}' to '{$role}'";
-            if (!empty($password)) $changes[] = "password";
-
-            // Log the activity with changes
-            $description = "Updated user: {$username}";
-            if (!empty($changes)) {
-                $description .= " (Changed " . implode(", ", $changes) . ")";
-            }
-            logActivity($mysqli, 'user', $description);
-
-            $_SESSION['success_msg'] = "User updated successfully!";
+            $message = "User updated successfully!";
+            // Redirect after successful update
             header("Location: manage-users.php");
             exit();
         } else {

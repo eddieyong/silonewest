@@ -1,6 +1,5 @@
 <?php
 session_start();
-require_once 'functions.php';
 
 // Check if the user is logged in and has the 'Admin' role
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
@@ -41,11 +40,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     );
 
     if ($stmt->execute()) {
-        // Log the activity
-        $description = "Added new supplier: {$company_name} (Contact: {$contact_person}, Email: {$email}, Phone: {$phone})";
-        logActivity($mysqli, 'supplier', $description);
-        
-        $_SESSION['success_msg'] = "Supplier added successfully!";
         header("Location: view-suppliers.php");
         exit();
     } else {

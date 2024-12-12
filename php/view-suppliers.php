@@ -21,7 +21,7 @@ if (isset($_POST['delete_supplier'])) {
     $supplier_id = $_POST['supplier_id'];
     
     // Get supplier details before deletion
-    $stmt = $mysqli->prepare("SELECT * FROM supplier WHERE id = ?");
+    $stmt = $mysqli->prepare("SELECT company_name FROM supplier WHERE id = ?");
     $stmt->bind_param("i", $supplier_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -32,9 +32,8 @@ if (isset($_POST['delete_supplier'])) {
     $stmt->bind_param("i", $supplier_id);
     
     if ($stmt->execute()) {
-        // Log the activity with more details
-        $description = "Deleted supplier: {$supplier['company_name']} (Contact: {$supplier['contact_person']}, Email: {$supplier['email']})";
-        logActivity($mysqli, 'supplier', $description);
+        // Log the activity
+        logActivity($mysqli, 'system', "Deleted supplier: " . $supplier['company_name']);
         $_SESSION['success_msg'] = "Supplier deleted successfully!";
     } else {
         $_SESSION['error_msg'] = "Error deleting supplier.";
@@ -238,20 +237,6 @@ include 'admin-header.php';
         opacity: 0.9;
         color: white;
     }
-    .export-btn.excel {
-        background: green;
-    }
-
-    
-    .export-btn.excel:hover {
-        background: #004000;
-    }
-
-    /* Add new styles for supplier activity icons */
-    .activity-icon.supplier {
-        background: #e8eaf6;
-        color: #3f51b5;
-    }
 </style>
 
 <div class="container">
@@ -260,9 +245,6 @@ include 'admin-header.php';
         <div class="header-buttons">
             <a href="export-suppliers-pdf.php" class="export-btn pdf">
                 <i class="fas fa-file-pdf"></i> Export to PDF
-            </a>
-            <a href="export-suppliers-excel.php" class="export-btn excel">
-                <i class="fas fa-file-excel"></i> Export to Excel
             </a>
             <a href="add-supplier.php" class="add-supplier-btn">
                 <i class="fas fa-plus"></i> Add New Supplier

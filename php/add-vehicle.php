@@ -29,22 +29,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $stmt->bind_param("ssssss", $vehicle_number, $insurance_expiry, $roadtax_expiry, $description, $gps, $remarks);
     
     if ($stmt->execute()) {
-        // Log the activity with detailed information
-        $details = array(
-            "Vehicle Number: $vehicle_number",
-            "Description: $description",
-            "Insurance Expiry: $insurance_expiry",
-            "Road Tax Expiry: $roadtax_expiry"
-        );
-        if ($gps) $details[] = "GPS: $gps";
-        if ($remarks) $details[] = "Remarks: $remarks";
-        
-        $activityLog = "Added new vehicle with details: " . implode(", ", $details);
-        logActivity($mysqli, 'vehicle', $activityLog);
-        
-        $_SESSION['vehicle_success_msg'] = "Vehicle added successfully!";
+        logActivity($mysqli, 'system', "Added new vehicle: $vehicle_number");
+        $_SESSION['success_msg'] = "Vehicle added successfully!";
     } else {
-        $_SESSION['vehicle_error_msg'] = "Error adding vehicle: " . $mysqli->error;
+        $_SESSION['error_msg'] = "Error adding vehicle: " . $mysqli->error;
     }
     
     header("Location: view-vehicles.php");

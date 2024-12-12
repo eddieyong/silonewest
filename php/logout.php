@@ -14,6 +14,6 @@ if (isset($_COOKIE[session_name()])) {
 session_destroy();
 
 // Redirect to login page
-header("Location: ../mainlogin.html");
+header("Location: ../admin-login.html");
 exit();
 ?>

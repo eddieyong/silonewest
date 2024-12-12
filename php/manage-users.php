@@ -1,13 +1,4 @@
 <?php
-session_start();
-require_once 'functions.php';
-
-// Check if user is logged in and has Admin role
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
-    header("Location: ../admin-login.html");
-    exit();
-}
-
 // Database connection
 $mysqli = new mysqli("localhost", "root", "", "fyp");
 
@@ -20,26 +11,9 @@ if ($mysqli->connect_error) {
 if (isset($_POST['delete_user'])) {
     $username = $_POST['username'];
     $table = $_POST['table'];
-    
-    // Get user details before deletion
-    $stmt = $mysqli->prepare("SELECT * FROM $table WHERE username = ?");
-    $stmt->bind_param("s", $username);
-    $stmt->execute();
-    $user = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-    
-    // Delete the user
     $stmt = $mysqli->prepare("DELETE FROM $table WHERE username = ?");
     $stmt->bind_param("s", $username);
-    
-    if ($stmt->execute()) {
-        // Log the activity
-        $description = "Deleted user: {$username} (Role: {$user['role']}, Email: {$user['email']}) from {$table} table";
-        logActivity($mysqli, 'user', $description);
-        $_SESSION['success_msg'] = "User deleted successfully!";
-    } else {
-        $_SESSION['error_msg'] = "Error deleting user.";
-    }
+    $stmt->execute();
     $stmt->close();
 }
 
@@ -234,16 +208,6 @@ include 'admin-header.php';
         border-radius: 4px;
         font-size: 0.9rem;
     }
-
-    /* Add success message styles */
-    .success-message {
-        background: #e8f5e9;
-        color: #2e7d32;
-        border: 1px solid #c8e6c9;
-        padding: 15px;
-        margin-bottom: 20px;
-        border-radius: 5px;
-    }
 </style>
 
 <div class="container">
@@ -253,15 +217,6 @@ include 'admin-header.php';
             <i class="fas fa-plus"></i> Add New User
         </a>
     </div>
-
-    <?php if (isset($_SESSION['success_msg'])): ?>
-        <div class="success-message">
-            <?php 
-                echo $_SESSION['success_msg'];
-                unset($_SESSION['success_msg']); // Clear the message after displaying
-            ?>
-        </div>
-    <?php endif; ?>
 
     <div class="search-bar">
         <input type="text" id="searchInput" placeholder="Search by username, email, contact, or role..." 
