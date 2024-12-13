@@ -51,9 +51,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if ($stmt->execute()) {
                 // Log the activity
                 $description = "Added new {$role} user: {$username} (Email: {$email}, Contact: {$contact})";
-                logActivity($mysqli, 'user', $description);
+                $activity_type = 'user';
+                $username = $_SESSION['username'];
+                $timestamp = date('Y-m-d H:i:s');
+                $full_description = "By $username: $description";
                 
-                $_SESSION['success_msg'] = "User added successfully!";
+                $log_stmt = $mysqli->prepare("INSERT INTO activities (activity_type, description, created_by, created_at) VALUES (?, ?, ?, ?)");
+                $log_stmt->bind_param("ssss", $activity_type, $full_description, $username, $timestamp);
+                
+                if ($log_stmt->execute()) {
+                    $_SESSION['success_msg'] = "User added successfully!";
+                } else {
+                    $_SESSION['success_msg'] = "User added but failed to log activity: " . $mysqli->error;
+                }
+                $log_stmt->close();
+                
                 header("Location: manage-users.php");
                 exit();
             } else {

@@ -35,8 +35,8 @@ switch($category) {
     case 'inventory':
         $base_query .= " AND activity_type = 'inventory'";
         break;
-    case 'vehicle':
-        $base_query .= " AND activity_type = 'vehicles'";
+    case 'vehicles':
+        $base_query .= " AND activity_type IN ('vehicles')";
         break;
     case 'user':
         $base_query .= " AND activity_type = 'user'";
@@ -190,7 +190,7 @@ include 'admin-header.php';
         color: #9c27b0;
     }
 
-    .activity-icon.vehicle {
+    .activity-icon.vehicles {
         background: #efebe9;
         color: #5d4037;
     }
@@ -298,7 +298,7 @@ include 'admin-header.php';
         <a href="?category=inventory" class="category-btn <?php echo $category === 'inventory' ? 'active' : ''; ?>">
             Inventory
         </a>
-        <a href="?category=vehicle" class="category-btn <?php echo $category === 'vehicle' ? 'active' : ''; ?>">
+        <a href="?category=vehicles" class="category-btn <?php echo $category === 'vehicles' ? 'active' : ''; ?>">
             Vehicles
         </a>
         <a href="?category=user" class="category-btn <?php echo $category === 'user' ? 'active' : ''; ?>">
@@ -331,7 +331,7 @@ include 'admin-header.php';
                                 'stock_alert' => 'exclamation-triangle',
                                 'supplier' => 'truck',
                                 'user' => 'users',
-                                'vehicle' => 'car',
+                                'vehicles' => 'car',
                                 'purchase_order' => 'file-invoice',
                                 'delivery_order' => 'truck',
                                 default => 'circle'

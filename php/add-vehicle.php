@@ -42,9 +42,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if ($remarks) $details[] = "Remarks: $remarks";
         
         $activityLog = "Added new vehicle with details: " . implode(", ", $details);
-        logActivity($mysqli, 'vehicle', $activityLog);
         
-        $_SESSION['vehicle_success_msg'] = "Vehicle added successfully!";
+        // Insert activity directly to ensure it's working
+        $username = $_SESSION['username'];
+        $timestamp = date('Y-m-d H:i:s');
+        $activity_type = 'vehicles'; // Changed from 'vehicle' to 'vehicles'
+        $full_description = "By $username: $activityLog";
+        
+        $log_stmt = $mysqli->prepare("INSERT INTO activities (activity_type, description, created_by, created_at) VALUES (?, ?, ?, ?)");
+        $log_stmt->bind_param("ssss", $activity_type, $full_description, $username, $timestamp);
+        
+        if ($log_stmt->execute()) {
+            $_SESSION['vehicle_success_msg'] = "Vehicle added successfully and activity logged!";
+        } else {
+            $_SESSION['vehicle_error_msg'] = "Vehicle added but failed to log activity: " . $mysqli->error;
+        }
+        $log_stmt->close();
     } else {
         $_SESSION['vehicle_error_msg'] = "Error adding vehicle: " . $mysqli->error;
     }
