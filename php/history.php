@@ -2,14 +2,6 @@
 session_start();
 require_once 'functions.php';
 
-// Set timezone
-date_default_timezone_set('Asia/Kuala_Lumpur');
-
-// Prevent caching
-header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-header("Cache-Control: post-check=0, pre-check=0", false);
-header("Pragma: no-cache");
-
 // Check if user is logged in and has Admin role
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
     header("Location: ../admin-login.html");
@@ -24,23 +16,55 @@ if ($mysqli->connect_error) {
     die("Connection failed: " . $mysqli->connect_error);
 }
 
-// Get activities with pagination
+// Get category from URL parameter, default to 'all'
+$category = isset($_GET['category']) ? strtolower($_GET['category']) : 'all';
+
+// Pagination
+$limit = 10;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$limit = 20; // Items per page
 $offset = ($page - 1) * $limit;
 
-// Get total number of activities
-$total_result = $mysqli->query("SELECT COUNT(*) as count FROM activities");
-$total_row = $total_result->fetch_assoc();
+// Base query
+$base_query = "FROM activities WHERE 1";
+
+// Modify query based on category
+switch($category) {
+    case 'stock':
+        $base_query .= " AND activity_type IN ('stock_in', 'stock_out')";
+        break;
+    case 'inventory':
+        $base_query .= " AND activity_type = 'inventory'";
+        break;
+    case 'vehicle':
+        $base_query .= " AND activity_type = 'vehicles'";
+        break;
+    case 'user':
+        $base_query .= " AND activity_type = 'user'";
+        break;
+    case 'supplier':
+        $base_query .= " AND activity_type = 'supplier'";
+        break;
+    case 'purchase_order':
+        $base_query .= " AND activity_type = 'purchase_order'";
+        break;
+    case 'delivery_order':
+        $base_query .= " AND activity_type = 'delivery_order'";
+        break;
+}
+
+// Get total number of activities for pagination
+$total_query = "SELECT COUNT(*) as count " . $base_query;
+$total_stmt = $mysqli->prepare($total_query);
+$total_stmt->execute();
+$total_row = $total_stmt->get_result()->fetch_assoc();
 $total_activities = $total_row['count'];
 $total_pages = ceil($total_activities / $limit);
 
-// Get activities for current page with explicit ordering and proper timezone conversion
-$query = "SELECT *, 
-          CONVERT_TZ(created_at, @@session.time_zone, '+08:00') as created_at_local 
-          FROM activities 
-          ORDER BY created_at DESC, id DESC 
-          LIMIT ? OFFSET ?";
+// Get activities for current page
+$query = "SELECT *, CONVERT_TZ(created_at, @@session.time_zone, '+08:00') as created_at_local " 
+       . $base_query 
+       . " ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?";
+
 $stmt = $mysqli->prepare($query);
 $stmt->bind_param("ii", $limit, $offset);
 $stmt->execute();
@@ -72,6 +96,41 @@ include 'admin-header.php';
         color: #333;
     }
 
+    .category-filter {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .category-btn {
+        padding: 10px 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background: white;
+        color: #666;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 0.95rem;
+        text-decoration: none;
+    }
+
+    .category-btn:hover {
+        border-color: #5c1f00;
+        color: #5c1f00;
+        background: #fff9f5;
+    }
+
+    .category-btn.active {
+        background: #5c1f00;
+        border-color: #5c1f00;
+        color: white;
+    }
+
     .activity-list {
         background: white;
         border-radius: 10px;
@@ -101,6 +160,11 @@ include 'admin-header.php';
         flex-shrink: 0;
     }
 
+    .activity-icon.inventory {
+        background: #e8f5e9;
+        color: #388e3c;
+    }
+
     .activity-icon.stock_in {
         background: #e3f2fd;
         color: #1976d2;
@@ -116,11 +180,6 @@ include 'admin-header.php';
         color: #f57c00;
     }
 
-    .activity-icon.inventory {
-        background: #e8f5e9;
-        color: #388e3c;
-    }
-
     .activity-icon.supplier {
         background: #e8eaf6;
         color: #3f51b5;
@@ -129,6 +188,11 @@ include 'admin-header.php';
     .activity-icon.user {
         background: #f3e5f5;
         color: #9c27b0;
+    }
+
+    .activity-icon.vehicle {
+        background: #efebe9;
+        color: #5d4037;
     }
 
     .activity-content {
@@ -148,6 +212,16 @@ include 'admin-header.php';
 
     .activity-description strong {
         color: #5c1f00;
+        font-weight: 600;
+    }
+
+    .stock-in {
+        color: #28a745;
+        font-weight: 600;
+    }
+
+    .stock-out {
+        color: #dc3545;
         font-weight: 600;
     }
 
@@ -179,6 +253,15 @@ include 'admin-header.php';
         color: white;
     }
 
+    .pagination .dots {
+        padding: 8px 12px;
+        border: none;
+        border-radius: 4px;
+        color: #333;
+        text-decoration: none;
+        transition: all 0.3s;
+    }
+
     .no-activities {
         text-align: center;
         padding: 40px 20px;
@@ -206,9 +289,33 @@ include 'admin-header.php';
 <div class="container">
     <div class="page-header">
         <h1 class="page-title">Activity History</h1>
-        <button onclick="window.location.reload()" class="refresh-btn">
-            <i class="fas fa-sync-alt"></i> Refresh
-        </button>
+    </div>
+
+    <div class="category-filter">
+        <a href="?category=all" class="category-btn <?php echo $category === 'all' ? 'active' : ''; ?>">
+            All Activities
+        </a>
+        <a href="?category=inventory" class="category-btn <?php echo $category === 'inventory' ? 'active' : ''; ?>">
+            Inventory
+        </a>
+        <a href="?category=vehicle" class="category-btn <?php echo $category === 'vehicle' ? 'active' : ''; ?>">
+            Vehicles
+        </a>
+        <a href="?category=user" class="category-btn <?php echo $category === 'user' ? 'active' : ''; ?>">
+            User
+        </a>
+        <a href="?category=supplier" class="category-btn <?php echo $category === 'supplier' ? 'active' : ''; ?>">
+            Supplier
+        </a>
+        <a href="?category=stock" class="category-btn <?php echo $category === 'stock' ? 'active' : ''; ?>">
+            Stock In / Out
+        </a>
+        <a href="?category=purchase_order" class="category-btn <?php echo $category === 'purchase_order' ? 'active' : ''; ?>">
+            Purchase Orders
+        </a>
+        <a href="?category=delivery_order" class="category-btn <?php echo $category === 'delivery_order' ? 'active' : ''; ?>">
+            Delivery Orders
+        </a>
     </div>
 
     <div class="activity-list">
@@ -216,119 +323,127 @@ include 'admin-header.php';
             <?php while ($activity = $activities->fetch_assoc()): ?>
                 <div class="activity-item">
                     <div class="activity-icon <?php echo htmlspecialchars($activity['activity_type']); ?>">
-                        <?php 
-                        switch($activity['activity_type']) {
-                            case 'stock_in':
-                                echo '<i class="fas fa-arrow-circle-up"></i>';
-                                break;
-                            case 'stock_out':
-                                echo '<i class="fas fa-arrow-circle-down"></i>';
-                                break;
-                            case 'stock_alert':
-                                echo '<i class="fas fa-exclamation-triangle"></i>';
-                                break;
-                            case 'supplier':
-                                echo '<i class="fas fa-building"></i>';
-                                break;
-                            case 'user':
-                                echo '<i class="fas fa-user-cog"></i>';
-                                break;
-                            case 'vehicle':
-                                echo '<i class="fas fa-car"></i>';
-                                break;
-                            case 'inventory':
-                            default:
-                                echo '<i class="fas fa-box"></i>';
-                                break;
-                        }
-                        ?>
+                        <i class="fas fa-<?php 
+                            echo match($activity['activity_type']) {
+                                'inventory' => 'box',
+                                'stock_in' => 'arrow-circle-up',
+                                'stock_out' => 'arrow-circle-down',
+                                'stock_alert' => 'exclamation-triangle',
+                                'supplier' => 'truck',
+                                'user' => 'users',
+                                'vehicle' => 'car',
+                                'purchase_order' => 'file-invoice',
+                                'delivery_order' => 'truck',
+                                default => 'circle'
+                            };
+                        ?>"></i>
                     </div>
                     <div class="activity-content">
                         <div class="activity-time">
-                            <?php 
-                            $timestamp = strtotime($activity['created_at_local']);
-                            echo date('M d, Y h:i A', $timestamp); 
-                            if (isset($activity['created_by']) && !empty($activity['created_by'])): ?>
-                                by <?php echo htmlspecialchars($activity['created_by']); ?>
-                            <?php endif; ?>
+                            <?php echo date('M d, Y H:i:s', strtotime($activity['created_at_local'])); ?>
                         </div>
                         <div class="activity-description">
-                            <?php echo formatActivityDescription($activity['description']); ?>
+                            <?php 
+                            $description = htmlspecialchars($activity['description']);
+                            
+                            // Replace "Stock Out X items" with colored version
+                            $description = preg_replace(
+                                '/Stock Out (\d+) items?/',
+                                '<span class="stock-out">Stock Out $1 items</span>',
+                                $description
+                            );
+                            
+                            // Replace "Stock In X items" with colored version
+                            $description = preg_replace(
+                                '/Stock In (\d+) items?/',
+                                '<span class="stock-in">Stock In $1 items</span>',
+                                $description
+                            );
+                            
+                            echo $description;
+                            ?>
                         </div>
                     </div>
                 </div>
             <?php endwhile; ?>
         <?php else: ?>
             <div class="no-activities">
-                <p>No activities found.</p>
+                <i class="fas fa-info-circle"></i>
+                <?php if ($category !== 'all'): ?>
+                    No activities found for this category.
+                <?php else: ?>
+                    No activities recorded yet.
+                <?php endif; ?>
             </div>
         <?php endif; ?>
     </div>
 
     <?php if ($total_pages > 1): ?>
-    <div class="pagination">
-        <!-- "<<" Button: Go back two pages -->
-        <?php if ($page > 2): ?>
-            <a href="?page=<?php echo max(1, $page - 2); ?>"><<</a>
-        <?php endif; ?>
-
-        <!-- "<" Button: Go to the previous page -->
-        <?php if ($page > 1): ?>
-            <a href="?page=<?php echo $page - 1; ?>"><</a>
-        <?php endif; ?>
-
-        <!-- Pagination Numbers -->
-        <?php
-        if ($total_pages <= 5) {
-            // Display all pages if total pages are 5 or less
-            for ($i = 1; $i <= $total_pages; $i++): ?>
-                <a href="?page=<?php echo $i; ?>" <?php echo ($page === $i) ? 'class="active"' : ''; ?>>
-                    <?php echo $i; ?>
-                </a>
-            <?php endfor;
-        } else {
-            // Display shortened range with ellipses
-            if ($page > 2): ?>
-                <a href="?page=1">1</a>
-                <?php if ($page > 3): ?>
-                    <span>...</span>
-                <?php endif;
-            endif;
-
-            // Display current page and its immediate neighbors
-            for ($i = max(1, $page - 1); $i <= min($total_pages, $page + 1); $i++): ?>
-                <a href="?page=<?php echo $i; ?>" <?php echo ($page === $i) ? 'class="active"' : ''; ?>>
-                    <?php echo $i; ?>
-                </a>
-            <?php endfor;
-
-            if ($page < $total_pages - 1): 
-                if ($page < $total_pages - 2): ?>
-                    <span>...</span>
-                <?php endif; ?>
-                <a href="?page=<?php echo $total_pages; ?>"><?php echo $total_pages; ?></a>
-            <?php endif;
-        }
-        ?>
-
-        <!-- ">" Button: Go to the next page -->
-        <?php if ($page < $total_pages): ?>
-            <a href="?page=<?php echo $page + 1; ?>">></a>
-        <?php endif; ?>
-
-        <!-- ">>" Button: Go forward two pages -->
-        <?php if ($page < $total_pages - 1): ?>
-            <a href="?page=<?php echo min($total_pages, $page + 2); ?>">>></a>
-        <?php endif; ?>
-    </div>
-<?php endif; ?>
-
+        <div class="pagination">
+            <?php
+            $current_page = $page;
+            $start_page = 1;
+            $end_page = $total_pages;
+            
+            // Always show first page
+            echo '<a href="?category=' . $category . '&page=1"' . ($current_page == 1 ? ' class="active"' : '') . '>1</a>';
+            
+            if ($total_pages > 7) {
+                // Show dots after first page if necessary
+                if ($current_page > 3) {
+                    echo '<span class="dots">...</span>';
+                }
+                
+                // Calculate range around current page
+                $range_start = max(2, $current_page - 1);
+                $range_end = min($total_pages - 1, $current_page + 1);
+                
+                // Adjust range if current page is near start or end
+                if ($current_page <= 3) {
+                    $range_end = 4;
+                }
+                if ($current_page >= $total_pages - 2) {
+                    $range_start = $total_pages - 3;
+                }
+                
+                // Show page numbers in range
+                for ($i = $range_start; $i <= $range_end; $i++) {
+                    echo '<a href="?category=' . $category . '&page=' . $i . '"' . 
+                         ($current_page == $i ? ' class="active"' : '') . '>' . $i . '</a>';
+                }
+                
+                // Show dots before last page if necessary
+                if ($current_page < $total_pages - 2) {
+                    echo '<span class="dots">...</span>';
+                }
+            } else {
+                // If less than 8 pages, show all numbers
+                for ($i = 2; $i < $total_pages; $i++) {
+                    echo '<a href="?category=' . $category . '&page=' . $i . '"' . 
+                         ($current_page == $i ? ' class="active"' : '') . '>' . $i . '</a>';
+                }
+            }
+            
+            // Always show last page if more than 1 page exists
+            if ($total_pages > 1) {
+                echo '<a href="?category=' . $category . '&page=' . $total_pages . '"' . 
+                     ($current_page == $total_pages ? ' class="active"' : '') . '>' . $total_pages . '</a>';
+            }
+            
+            // Next button
+            if ($current_page < $total_pages) {
+                echo '<a href="?category=' . $category . '&page=' . ($current_page + 1) . '" class="next">Next</a>';
+            }
+            ?>
+        </div>
+    <?php endif; ?>
+</div>
 
 <script>
-// Auto-refresh the page every 30 seconds
-setTimeout(function() {
+// Auto-refresh the page every 60 seconds
+setInterval(function() {
     window.location.reload();
-}, 30000);
+}, 60000);
 </script>
 
 <?php $mysqli->close(); ?>
