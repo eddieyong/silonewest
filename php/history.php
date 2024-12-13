@@ -266,15 +266,63 @@ include 'admin-header.php';
     </div>
 
     <?php if ($total_pages > 1): ?>
-        <div class="pagination">
-            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+    <div class="pagination">
+        <!-- "<<" Button: Go back two pages -->
+        <?php if ($page > 2): ?>
+            <a href="?page=<?php echo max(1, $page - 2); ?>"><<</a>
+        <?php endif; ?>
+
+        <!-- "<" Button: Go to the previous page -->
+        <?php if ($page > 1): ?>
+            <a href="?page=<?php echo $page - 1; ?>"><</a>
+        <?php endif; ?>
+
+        <!-- Pagination Numbers -->
+        <?php
+        if ($total_pages <= 5) {
+            // Display all pages if total pages are 5 or less
+            for ($i = 1; $i <= $total_pages; $i++): ?>
                 <a href="?page=<?php echo $i; ?>" <?php echo ($page === $i) ? 'class="active"' : ''; ?>>
                     <?php echo $i; ?>
                 </a>
-            <?php endfor; ?>
-        </div>
-    <?php endif; ?>
-</div>
+            <?php endfor;
+        } else {
+            // Display shortened range with ellipses
+            if ($page > 2): ?>
+                <a href="?page=1">1</a>
+                <?php if ($page > 3): ?>
+                    <span>...</span>
+                <?php endif;
+            endif;
+
+            // Display current page and its immediate neighbors
+            for ($i = max(1, $page - 1); $i <= min($total_pages, $page + 1); $i++): ?>
+                <a href="?page=<?php echo $i; ?>" <?php echo ($page === $i) ? 'class="active"' : ''; ?>>
+                    <?php echo $i; ?>
+                </a>
+            <?php endfor;
+
+            if ($page < $total_pages - 1): 
+                if ($page < $total_pages - 2): ?>
+                    <span>...</span>
+                <?php endif; ?>
+                <a href="?page=<?php echo $total_pages; ?>"><?php echo $total_pages; ?></a>
+            <?php endif;
+        }
+        ?>
+
+        <!-- ">" Button: Go to the next page -->
+        <?php if ($page < $total_pages): ?>
+            <a href="?page=<?php echo $page + 1; ?>">></a>
+        <?php endif; ?>
+
+        <!-- ">>" Button: Go forward two pages -->
+        <?php if ($page < $total_pages - 1): ?>
+            <a href="?page=<?php echo min($total_pages, $page + 2); ?>">>></a>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
+
 
 <script>
 // Auto-refresh the page every 30 seconds

@@ -55,7 +55,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
     $stock_out = $_POST['stock_out'];
     $balance = $_POST['balance'];
     $remarks = $_POST['remarks'];
-
     // Check if item exists
     $check_stmt = $mysqli->prepare("SELECT bar_code FROM inventory WHERE bar_code = ?");
     $check_stmt->bind_param("s", $bar_code);
@@ -114,13 +113,14 @@ if (!empty($search)) {
     $types .= "sss";
 }
 
-// Handle search by month (for mfg_date or exp_date)
+// Handle search by month (for created_at)
 if (!empty($month)) {
-    $query .= " AND (DATE_FORMAT(mfg_date, '%m') = ? OR DATE_FORMAT(exp_date, '%m') = ?)";
+    $query .= " AND MONTH(created_at) = ?";
     $params[] = $month;
-    $params[] = $month;
-    $types .= "ss";
+    $types .= "s";
 }
+
+$query .= " ORDER BY created_at DESC";  // Order by creation date, newest first
 
 $stmt = $mysqli->prepare($query);
 
@@ -133,7 +133,6 @@ $result = $stmt->get_result();
 
 include 'admin-header.php';
 ?>
-
 <style>
     .container {
         padding: 20px 30px;
@@ -170,18 +169,40 @@ include 'admin-header.php';
         align-items: center;
     }
 
-    .search-bar input {
-        flex: 1;
-        padding: 10px;
+    .search-bar input,
+    .search-bar select {
+        padding: 10px 15px;
         border: 1px solid #ddd;
         border-radius: 5px;
-        font-size: 1rem;
-        transition: border-color 0.3s;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
     }
 
-    .search-bar input:focus {
-        border-color: #5c1f00;
+    .search-bar input {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .search-bar select {
+        min-width: 150px;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background: #fff url("data:image/svg+xml,<svg height='10px' width='10px' viewBox='0 0 16 16' fill='%23000000' xmlns='http://www.w3.org/2000/svg'><path d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/></svg>") no-repeat;
+        background-position: calc(100% - 12px) center;
+        padding-right: 35px;
+        cursor: pointer;
+    }
+
+    .search-bar input:focus,
+    .search-bar select:focus {
         outline: none;
+        border-color: #5c1f00;
+        box-shadow: 0 0 0 2px rgba(92, 31, 0, 0.1);
+    }
+
+    .search-bar select:hover {
+        border-color: #5c1f00;
     }
 
     .search-bar button {
@@ -520,7 +541,7 @@ include 'admin-header.php';
             ?>
         </div>
     <?php endif; ?>
-
+    
     <?php if (isset($_SESSION['error_msg'])): ?>
         <div class="alert alert-danger">
             <?php 
@@ -529,7 +550,7 @@ include 'admin-header.php';
             ?>
         </div>
     <?php endif; ?>
-
+    
     <div class="search-bar">
         <input type="text" id="searchInput" placeholder="Search by name, item number, or barcode..." value="<?php echo htmlspecialchars($search); ?>">
         <select id="monthSelect">
@@ -684,34 +705,32 @@ function debounce(func, wait) {
 
 // Function to perform the search
 function performSearch() {
-    const searchValue = document.getElementById('searchInput').value;
-    const monthValue = document.getElementById('monthSelect').value;
+    const searchValue = document.getElementById('searchInput')?.value || '';
+    const monthValue = document.getElementById('monthSelect')?.value || '';
     
-    // Create the URL with search parameters
-    const searchParams = new URLSearchParams();
-    if (searchValue) searchParams.append('search', searchValue);
-    if (monthValue) searchParams.append('month', monthValue);
-    
-    // Create XMLHttpRequest object
     const xhr = new XMLHttpRequest();
-    xhr.open('GET', `inventory.php?${searchParams.toString()}`, true);
-
-    xhr.onload = function () {
+    xhr.open('GET', `inventory.php?search=${encodeURIComponent(searchValue)}&month=${encodeURIComponent(monthValue)}`, true);
+    xhr.onreadystatechange = function() {
+        if (this.readyState !== 4) return;
         if (this.status === 200) {
-            // Update the entire page content
-            document.documentElement.innerHTML = this.responseText;
+            // Parse the response as HTML
+            const parser = new DOMParser();
+            const newDoc = parser.parseFromString(this.responseText, 'text/html');
+            
+            // Update only the table content instead of the entire page
+            const oldTable = document.querySelector('.inventory-table');
+            const newTable = newDoc.querySelector('.inventory-table');
+            if (oldTable && newTable) {
+                oldTable.innerHTML = newTable.innerHTML;
+            }
             
             // Restore the selected values
             const searchInput = document.getElementById('searchInput');
             const monthSelect = document.getElementById('monthSelect');
             if (searchInput) searchInput.value = searchValue;
             if (monthSelect) monthSelect.value = monthValue;
-            
-            // Reattach event listeners
-            attachEventListeners();
         }
     };
-
     xhr.send();
 }
 
