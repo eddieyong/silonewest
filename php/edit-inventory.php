@@ -2,8 +2,8 @@
 session_start();
 require_once 'functions.php';
 
-// Check if user is logged in and has Admin role
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
+// Check if user is logged in and has appropriate role
+if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Storekeeper'])) {
     header("Location: ../admin-login.html");
     exit();
 }
@@ -84,27 +84,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     );
 
     if ($stmt->execute()) {
-        // Log the edit activity with detailed changes
-        $changes = array();
-        if ($item_number !== $item['item_number']) $changes[] = "Item Number: {$item['item_number']} → $item_number";
-        if ($inventory_item !== $item['inventory_item']) $changes[] = "Item Name: {$item['inventory_item']} → $inventory_item";
-        if ($new_bar_code !== $item['bar_code']) $changes[] = "Bar Code: {$item['bar_code']} → $new_bar_code";
-        if ($mfg_date !== $item['mfg_date']) $changes[] = "Mfg Date: {$item['mfg_date']} → $mfg_date";
-        if ($exp_date !== $item['exp_date']) $changes[] = "Exp Date: {$item['exp_date']} → $exp_date";
-        if ($balance_brought_forward !== $item['balance_brought_forward']) $changes[] = "Balance B/F: {$item['balance_brought_forward']} → $balance_brought_forward";
-        if ($stock_in !== $item['stock_in']) $changes[] = "Stock In: {$item['stock_in']} → $stock_in";
-        if ($stock_out !== $item['stock_out']) $changes[] = "Stock Out: {$item['stock_out']} → $stock_out";
-        if ($remarks !== $item['remarks']) $changes[] = "Remarks: {$item['remarks']} → $remarks";
+        // Log the activity
+        $activity_description = "Updated inventory item: $inventory_item (Barcode: $bar_code)";
+        $stmt = $mysqli->prepare("INSERT INTO activities (activity_type, description, created_by) VALUES ('inventory_update', ?, ?)");
+        $stmt->bind_param("ss", $activity_description, $_SESSION['username']);
+        $stmt->execute();
 
-        $changes_text = !empty($changes) ? "Changes: " . implode(", ", $changes) : "No changes made";
-        logActivity($mysqli, 'inventory', "Edited inventory item: $inventory_item. $changes_text");
-        
         $_SESSION['success_msg'] = "Item updated successfully!";
         header("Location: inventory.php");
         exit();
     } else {
-        $message = "Error updating inventory item: " . $mysqli->error;
-        $messageType = "error";
+        $error_message = "Error updating item: " . $mysqli->error;
     }
     $stmt->close();
 }

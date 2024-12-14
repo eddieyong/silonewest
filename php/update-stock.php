@@ -1,10 +1,11 @@
 <?php
 session_start();
-require_once 'functions.php';
+require_once 'permissions.php';
 
-// Check if user is logged in and has Admin role
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
-    header("Location: ../admin-login.html");
+// Check if user is logged in and has permission
+if (!isset($_SESSION['username']) || !hasStockPermission($_SESSION['role'])) {
+    header('HTTP/1.1 403 Forbidden');
+    echo json_encode(['error' => 'You do not have permission to perform this action']);
     exit();
 }
 
@@ -51,7 +52,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $stmt->bind_param("iis", $new_stock_in, $new_balance, $bar_code);
                 
                 if ($stmt->execute()) {
-                    logActivity($mysqli, 'stock_in', "Added {$amount} items to inventory (Barcode: {$bar_code}, Item: {$current_item['inventory_item']})");
+                    // Log the activity
+                    $activity_type = 'stock_in';
+                    $item_name = $current_item['inventory_item'];
+                    $activity_description = "Stock In: Added $amount units of $item_name (Barcode: $bar_code)";
+                    
+                    $stmt = $mysqli->prepare("INSERT INTO activities (activity_type, description, created_by) VALUES (?, ?, ?)");
+                    $stmt->bind_param("sss", $activity_type, $activity_description, $_SESSION['username']);
+                    $stmt->execute();
+
+                    // Check for low stock and create alert if necessary
+                    if ($new_balance < 10) {
+                        $alert_description = "Low stock alert: $item_name has only $new_balance units remaining";
+                        $alert_type = 'stock_alert';
+                        $stmt = $mysqli->prepare("INSERT INTO activities (activity_type, description, created_by) VALUES (?, ?, ?)");
+                        $stmt->bind_param("sss", $alert_type, $alert_description, $_SESSION['username']);
+                        $stmt->execute();
+                    }
+
                     $_SESSION['success_msg'] = "Stock in successful!";
                 } else {
                     $_SESSION['error_msg'] = "Error updating stock in.";
@@ -72,15 +90,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $stmt->bind_param("iis", $new_stock_out, $new_balance, $bar_code);
                 
                 if ($stmt->execute()) {
-                    logActivity($mysqli, 'stock_out', "Removed {$amount} items from inventory (Barcode: {$bar_code}, Item: {$current_item['inventory_item']})");
+                    // Log the activity
+                    $activity_type = 'stock_out';
+                    $item_name = $current_item['inventory_item'];
+                    $activity_description = "Stock Out: Removed $amount units of $item_name (Barcode: $bar_code)";
+                    
+                    $stmt = $mysqli->prepare("INSERT INTO activities (activity_type, description, created_by) VALUES (?, ?, ?)");
+                    $stmt->bind_param("sss", $activity_type, $activity_description, $_SESSION['username']);
+                    $stmt->execute();
+
+                    // Check for low stock and create alert if necessary
+                    if ($new_balance < 10) {
+                        $alert_description = "Low stock alert: $item_name has only $new_balance units remaining";
+                        $alert_type = 'stock_alert';
+                        $stmt = $mysqli->prepare("INSERT INTO activities (activity_type, description, created_by) VALUES (?, ?, ?)");
+                        $stmt->bind_param("sss", $alert_type, $alert_description, $_SESSION['username']);
+                        $stmt->execute();
+                    }
+
                     $_SESSION['success_msg'] = "Stock out successful!";
                 } else {
                     $_SESSION['error_msg'] = "Error updating stock out.";
-                }
-
-                // Check for low stock after stock out
-                if ($new_balance < 10) {
-                    logActivity($mysqli, 'stock_alert', "Low stock alert for {$current_item['inventory_item']} (Barcode: {$bar_code}, Current balance: {$new_balance})");
                 }
             }
         }

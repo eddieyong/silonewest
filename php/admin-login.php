@@ -31,18 +31,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         // Verify the password
         if (password_verify($password, $row['password'])) {
-            // Check if the user is an admin
-            if ($row['role'] === 'Admin') {
+            // Check if the user has a valid role
+            $valid_roles = ['Admin', 'Storekeeper', 'Coordinator', 'Driver'];
+            if (in_array($row['role'], $valid_roles)) {
                 // Start session
                 session_start();
                 $_SESSION['username'] = $username;
-                $_SESSION['role'] = 'Admin';
+                $_SESSION['role'] = $row['role'];
 
                 // Redirect to the admin panel
                 header("Location: admin.php");
                 exit();
             } else {
-                echo "<script>alert('Access denied. Only admins can log in here.'); window.location.href = '../admin-login.html';</script>";
+                echo "<script>alert('Invalid role.'); window.location.href = '../admin-login.html';</script>";
                 exit();
             }
         } else {

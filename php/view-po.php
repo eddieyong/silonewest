@@ -381,9 +381,25 @@ include 'admin-header.php';
                 <div class="po-info">
                     <label>Status</label>
                     <div class="value">
-                        <span class="status-badge status-<?php echo strtolower($po_details['status']); ?>">
-                            <?php echo htmlspecialchars($po_details['status']); ?>
-                        </span>
+                        <?php
+                        $status = trim($po_details['status']);
+                        $badge_class = '';
+                        switch($status) {
+                            case 'Pending':
+                                $badge_class = 'badge bg-warning';
+                                break;
+                            case 'Completed':
+                                $badge_class = 'badge bg-success';
+                                break;
+                            case 'Cancelled':
+                                $badge_class = 'badge bg-danger';
+                                break;
+                            case 'Received':
+                                $badge_class = 'badge bg-info';
+                                break;
+                        }
+                        echo "<span class='$badge_class'>" . htmlspecialchars($status) . "</span>";
+                        ?>
                     </div>
                 </div>
             </div>

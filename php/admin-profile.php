@@ -1,8 +1,8 @@
 <?php
 session_start();
 
-// Check if user is logged in and has Admin role
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
+// Check if user is logged in and has appropriate role
+if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator', 'Driver'])) {
     header("Location: ../admin-login.html");
     exit();
 }

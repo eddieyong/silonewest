@@ -2,9 +2,10 @@
 session_start();
 require_once 'functions.php';
 
-// Check if user is logged in and has Admin role
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
-    header("Location: ../admin-login.html");
+// Check if user is logged in and has Admin or Storekeeper role
+if (!isset($_SESSION['username']) || ($_SESSION['role'] !== 'Admin' && $_SESSION['role'] !== 'Storekeeper')) {
+    header("Location: inventory.php");
+    $_SESSION['error_msg'] = "You don't have permission to access Purchase Orders.";
     exit();
 }
 

@@ -21,12 +21,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $vehicle_number = $_POST['vehicle_number'];
     $insurance_expiry = $_POST['insurance_expiry'];
     $roadtax_expiry = $_POST['roadtax_expiry'];
+    $puspakom_expiry = $_POST['puspakom_expiry'] ?: NULL;
     $description = $_POST['description'];
     $gps = $_POST['gps'] ?: NULL;
     $remarks = $_POST['remarks'] ?: NULL;
 
-    $stmt = $mysqli->prepare("INSERT INTO vehicles (vehicle_number, insurance_expiry, roadtax_expiry, description, gps, remarks) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("ssssss", $vehicle_number, $insurance_expiry, $roadtax_expiry, $description, $gps, $remarks);
+    $stmt = $mysqli->prepare("INSERT INTO vehicles (vehicle_number, insurance_expiry, roadtax_expiry, puspakom_expiry, description, gps, remarks) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("sssssss", $vehicle_number, $insurance_expiry, $roadtax_expiry, $puspakom_expiry, $description, $gps, $remarks);
     
     if ($stmt->execute()) {
         // Log the activity with detailed information
@@ -34,15 +35,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             "Vehicle Number: $vehicle_number",
             "Description: $description",
             "Insurance Expiry: $insurance_expiry",
-            "Road Tax Expiry: $roadtax_expiry"
+            "Road Tax Expiry: $roadtax_expiry",
+            "PUSPAKOM Expiry: " . ($puspakom_expiry ?: 'Not Set')
         );
         if ($gps) $details[] = "GPS: $gps";
         if ($remarks) $details[] = "Remarks: $remarks";
         
         $activityLog = "Added new vehicle with details: " . implode(", ", $details);
-        logActivity($mysqli, 'vehicle', $activityLog);
         
-        $_SESSION['vehicle_success_msg'] = "Vehicle added successfully!";
+        // Insert activity directly to ensure it's working
+        $username = $_SESSION['username'];
+        $timestamp = date('Y-m-d H:i:s');
+        $activity_type = 'vehicles'; // Changed from 'vehicle' to 'vehicles'
+        $full_description = "By $username: $activityLog";
+        
+        $log_stmt = $mysqli->prepare("INSERT INTO activities (activity_type, description, created_by, created_at) VALUES (?, ?, ?, ?)");
+        $log_stmt->bind_param("ssss", $activity_type, $full_description, $username, $timestamp);
+        
+        if ($log_stmt->execute()) {
+            $_SESSION['vehicle_success_msg'] = "Vehicle added successfully and activity logged!";
+        } else {
+            $_SESSION['vehicle_error_msg'] = "Vehicle added but failed to log activity: " . $mysqli->error;
+        }
+        $log_stmt->close();
     } else {
         $_SESSION['vehicle_error_msg'] = "Error adding vehicle: " . $mysqli->error;
     }
@@ -154,11 +169,22 @@ include 'admin-header.php';
     opacity: 0.9;
     color: white;
 }
+
+.form-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 4px;
+}
 </style>
 
 <div class="container">
     <div class="page-header">
         <h1 class="page-title">Add New Vehicle</h1>
+        <div class="header-buttons" style="margin-left: auto;">
+            <button type="submit" class="submit-btn" style="margin-left: auto;">
+                <i class="fas fa-plus"></i> Add New Vehicle
+            </button>
+        </div>
     </div>
 
     <div class="form-container">
@@ -182,6 +208,12 @@ include 'admin-header.php';
                 <div class="form-group">
                     <label for="roadtax_expiry">Road Tax Expiry Date</label>
                     <input type="date" id="roadtax_expiry" name="roadtax_expiry" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="puspakom_expiry">PUSPAKOM Expiry Date</label>
+                    <input type="date" id="puspakom_expiry" name="puspakom_expiry" class="form-control">
+                    <div class="form-text">Leave empty if not applicable</div>
                 </div>
 
                 <div class="form-group">

@@ -2,16 +2,8 @@
 session_start();
 require_once 'functions.php';
 
-// Set timezone
-date_default_timezone_set('Asia/Kuala_Lumpur');
-
-// Prevent caching
-header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-header("Cache-Control: post-check=0, pre-check=0", false);
-header("Pragma: no-cache");
-
 // Check if user is logged in and has Admin role
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
+if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Storekeeper'])) {
     header("Location: ../admin-login.html");
     exit();
 }
@@ -24,23 +16,60 @@ if ($mysqli->connect_error) {
     die("Connection failed: " . $mysqli->connect_error);
 }
 
-// Get activities with pagination
+// Get category from URL parameter, default to 'all'
+$category = isset($_GET['category']) ? strtolower($_GET['category']) : 'all';
+
+// Pagination
+$limit = 10;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$limit = 20; // Items per page
 $offset = ($page - 1) * $limit;
 
-// Get total number of activities
-$total_result = $mysqli->query("SELECT COUNT(*) as count FROM activities");
-$total_row = $total_result->fetch_assoc();
+// Base query
+$base_query = "FROM activities WHERE 1";
+
+// Add role-based filtering
+if ($_SESSION['role'] === 'Storekeeper') {
+    $base_query .= " AND activity_type IN ('inventory', 'stock_in', 'stock_out', 'purchase_order', 'delivery_order')";
+}
+
+// Modify query based on category
+switch($category) {
+    case 'stock':
+        $base_query .= " AND activity_type IN ('stock_in', 'stock_out')";
+        break;
+    case 'inventory':
+        $base_query .= " AND activity_type = 'inventory'";
+        break;
+    case 'vehicles':
+        $base_query .= " AND activity_type = 'vehicles'";
+        break;
+    case 'user':
+        $base_query .= " AND activity_type = 'user'";
+        break;
+    case 'supplier':
+        $base_query .= " AND activity_type = 'supplier'";
+        break;
+    case 'purchase_order':
+        $base_query .= " AND activity_type = 'purchase_order'";
+        break;
+    case 'delivery_order':
+        $base_query .= " AND activity_type = 'delivery_order'";
+        break;
+}
+
+// Get total number of activities for pagination
+$total_query = "SELECT COUNT(*) as count " . $base_query;
+$total_stmt = $mysqli->prepare($total_query);
+$total_stmt->execute();
+$total_row = $total_stmt->get_result()->fetch_assoc();
 $total_activities = $total_row['count'];
 $total_pages = ceil($total_activities / $limit);
 
-// Get activities for current page with explicit ordering and proper timezone conversion
-$query = "SELECT *, 
-          CONVERT_TZ(created_at, @@session.time_zone, '+08:00') as created_at_local 
-          FROM activities 
-          ORDER BY created_at DESC, id DESC 
-          LIMIT ? OFFSET ?";
+// Get activities for current page
+$query = "SELECT *, DATE_FORMAT(created_at, '%b %d, %Y %H:%i:%S') as formatted_date " 
+       . $base_query 
+       . " ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?";
+
 $stmt = $mysqli->prepare($query);
 $stmt->bind_param("ii", $limit, $offset);
 $stmt->execute();
@@ -49,286 +78,219 @@ $activities = $stmt->get_result();
 include 'admin-header.php';
 ?>
 
-<style>
-    .container {
-        padding: 20px 30px;
-        background: #f8f9fa;
-    }
-
-    .page-header {
-        background: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        margin-bottom: 30px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .page-title {
-        margin: 0;
-        font-size: 1.5rem;
-        color: #333;
-    }
-
-    .activity-list {
-        background: white;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        overflow: hidden;
-    }
-
-    .activity-item {
-        padding: 15px 20px;
-        border-bottom: 1px solid #eee;
-        display: flex;
-        align-items: flex-start;
-        gap: 15px;
-    }
-
-    .activity-item:last-child {
-        border-bottom: none;
-    }
-
-    .activity-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-
-    .activity-icon.stock_in {
-        background: #e3f2fd;
-        color: #1976d2;
-    }
-
-    .activity-icon.stock_out {
-        background: #fce4ec;
-        color: #c2185b;
-    }
-
-    .activity-icon.stock_alert {
-        background: #fff3e0;
-        color: #f57c00;
-    }
-
-    .activity-icon.inventory {
-        background: #e8f5e9;
-        color: #388e3c;
-    }
-
-    .activity-icon.supplier {
-        background: #e8eaf6;
-        color: #3f51b5;
-    }
-
-    .activity-icon.user {
-        background: #f3e5f5;
-        color: #9c27b0;
-    }
-
-    .activity-content {
-        flex-grow: 1;
-    }
-
-    .activity-time {
-        color: #666;
-        font-size: 0.875rem;
-        margin-bottom: 5px;
-    }
-
-    .activity-description {
-        color: #333;
-        line-height: 1.5;
-    }
-
-    .activity-description strong {
-        color: #5c1f00;
-        font-weight: 600;
-    }
-
-    .pagination {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        margin-top: 30px;
-    }
-
-    .pagination a {
-        padding: 8px 12px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        color: #333;
-        text-decoration: none;
-        transition: all 0.3s;
-    }
-
-    .pagination a:hover {
-        background: #f8f9fa;
-        border-color: #5c1f00;
-        color: #5c1f00;
-    }
-
-    .pagination a.active {
-        background: #5c1f00;
-        border-color: #5c1f00;
-        color: white;
-    }
-
-    .no-activities {
-        text-align: center;
-        padding: 40px 20px;
-        color: #666;
-    }
-
-    .refresh-btn {
-        background: #5c1f00;
-        color: white;
-        padding: 8px 16px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        transition: opacity 0.3s;
-    }
-    
-    .refresh-btn:hover {
-        opacity: 0.9;
-    }
-</style>
-
 <div class="container">
     <div class="page-header">
-        <h1 class="page-title">Activity History</h1>
-        <button onclick="window.location.reload()" class="refresh-btn">
-            <i class="fas fa-sync-alt"></i> Refresh
-        </button>
+        <h1>Activity History</h1>
+    </div>
+
+    <div class="filter-section">
+        <a href="?category=all" class="filter-btn <?php echo $category === 'all' ? 'active' : ''; ?>">
+            <i class="fas fa-list"></i> All Activities
+        </a>
+        <a href="?category=inventory" class="filter-btn <?php echo $category === 'inventory' ? 'active' : ''; ?>">
+            <i class="fas fa-warehouse"></i> Inventory
+        </a>
+        <?php if ($_SESSION['role'] === 'Admin'): ?>
+            <a href="?category=vehicles" class="filter-btn <?php echo $category === 'vehicles' ? 'active' : ''; ?>">
+                <i class="fas fa-car"></i> Vehicles
+            </a>
+            <a href="?category=user" class="filter-btn <?php echo $category === 'user' ? 'active' : ''; ?>">
+                <i class="fas fa-user"></i> User
+            </a>
+            <a href="?category=supplier" class="filter-btn <?php echo $category === 'supplier' ? 'active' : ''; ?>">
+                <i class="fas fa-industry"></i> Supplier
+            </a>
+        <?php endif; ?>
+        <a href="?category=stock" class="filter-btn <?php echo $category === 'stock' ? 'active' : ''; ?>">
+            <i class="fas fa-box"></i> Stock In / Out
+        </a>
+        <a href="?category=purchase_order" class="filter-btn <?php echo $category === 'purchase_order' ? 'active' : ''; ?>">
+            <i class="fas fa-file-invoice"></i> Purchase Orders
+        </a>
+        <a href="?category=delivery_order" class="filter-btn <?php echo $category === 'delivery_order' ? 'active' : ''; ?>">
+            <i class="fas fa-truck"></i> Delivery Orders
+        </a>
     </div>
 
     <div class="activity-list">
-        <?php if ($activities->num_rows > 0): ?>
-            <?php while ($activity = $activities->fetch_assoc()): ?>
-                <div class="activity-item">
-                    <div class="activity-icon <?php echo htmlspecialchars($activity['activity_type']); ?>">
-                        <?php 
-                        switch($activity['activity_type']) {
-                            case 'stock_in':
-                                echo '<i class="fas fa-arrow-circle-up"></i>';
-                                break;
-                            case 'stock_out':
-                                echo '<i class="fas fa-arrow-circle-down"></i>';
-                                break;
-                            case 'stock_alert':
-                                echo '<i class="fas fa-exclamation-triangle"></i>';
-                                break;
-                            case 'supplier':
-                                echo '<i class="fas fa-building"></i>';
-                                break;
-                            case 'user':
-                                echo '<i class="fas fa-user-cog"></i>';
-                                break;
-                            case 'vehicle':
-                                echo '<i class="fas fa-car"></i>';
-                                break;
-                            case 'inventory':
-                            default:
-                                echo '<i class="fas fa-box"></i>';
-                                break;
-                        }
-                        ?>
+        <?php while ($activity = $activities->fetch_assoc()): ?>
+            <div class="activity-item">
+                <div class="activity-time">
+                    <?php echo $activity['formatted_date']; ?>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-description">
+                        <?php echo htmlspecialchars($activity['description']); ?>
                     </div>
-                    <div class="activity-content">
-                        <div class="activity-time">
-                            <?php 
-                            $timestamp = strtotime($activity['created_at_local']);
-                            echo date('M d, Y h:i A', $timestamp); 
-                            if (isset($activity['created_by']) && !empty($activity['created_by'])): ?>
-                                by <?php echo htmlspecialchars($activity['created_by']); ?>
-                            <?php endif; ?>
-                        </div>
-                        <div class="activity-description">
-                            <?php echo formatActivityDescription($activity['description']); ?>
-                        </div>
+                    <div class="activity-meta">
+                        <span class="activity-type"><?php echo ucfirst(str_replace('_', ' ', $activity['activity_type'])); ?></span>
+                        <span class="activity-user">by <?php echo htmlspecialchars($activity['created_by']); ?></span>
                     </div>
                 </div>
-            <?php endwhile; ?>
-        <?php else: ?>
-            <div class="no-activities">
-                <p>No activities found.</p>
             </div>
-        <?php endif; ?>
+        <?php endwhile; ?>
     </div>
 
     <?php if ($total_pages > 1): ?>
-    <div class="pagination">
-        <!-- "<<" Button: Go back two pages -->
-        <?php if ($page > 2): ?>
-            <a href="?page=<?php echo max(1, $page - 2); ?>"><<</a>
-        <?php endif; ?>
+        <div class="pagination">
+            <?php
+            $range = 2; // How many pages to show on each side of current page
+            
+            // Always show first page
+            echo '<a href="?page=1&category=' . $category . '" 
+                   class="page-link ' . ($page === 1 ? 'active' : '') . '">1</a>';
 
-        <!-- "<" Button: Go to the previous page -->
-        <?php if ($page > 1): ?>
-            <a href="?page=<?php echo $page - 1; ?>"><</a>
-        <?php endif; ?>
+            // Show dots after first page if necessary
+            if ($page - $range > 2) {
+                echo '<span class="page-dots">...</span>';
+            }
 
-        <!-- Pagination Numbers -->
-        <?php
-        if ($total_pages <= 5) {
-            // Display all pages if total pages are 5 or less
-            for ($i = 1; $i <= $total_pages; $i++): ?>
-                <a href="?page=<?php echo $i; ?>" <?php echo ($page === $i) ? 'class="active"' : ''; ?>>
-                    <?php echo $i; ?>
-                </a>
-            <?php endfor;
-        } else {
-            // Display shortened range with ellipses
-            if ($page > 2): ?>
-                <a href="?page=1">1</a>
-                <?php if ($page > 3): ?>
-                    <span>...</span>
-                <?php endif;
-            endif;
+            // Show pages around current page
+            for ($i = max(2, $page - $range); $i <= min($page + $range, $total_pages - 1); $i++) {
+                echo '<a href="?page=' . $i . '&category=' . $category . '" 
+                       class="page-link ' . ($page === $i ? 'active' : '') . '">' . $i . '</a>';
+            }
 
-            // Display current page and its immediate neighbors
-            for ($i = max(1, $page - 1); $i <= min($total_pages, $page + 1); $i++): ?>
-                <a href="?page=<?php echo $i; ?>" <?php echo ($page === $i) ? 'class="active"' : ''; ?>>
-                    <?php echo $i; ?>
-                </a>
-            <?php endfor;
+            // Show dots before last page if necessary
+            if ($page + $range < $total_pages - 1) {
+                echo '<span class="page-dots">...</span>';
+            }
 
-            if ($page < $total_pages - 1): 
-                if ($page < $total_pages - 2): ?>
-                    <span>...</span>
-                <?php endif; ?>
-                <a href="?page=<?php echo $total_pages; ?>"><?php echo $total_pages; ?></a>
-            <?php endif;
-        }
-        ?>
+            // Always show last page if there is more than one page
+            if ($total_pages > 1) {
+                echo '<a href="?page=' . $total_pages . '&category=' . $category . '" 
+                       class="page-link ' . ($page === $total_pages ? 'active' : '') . '">' . $total_pages . '</a>';
+            }
+            ?>
+        </div>
+    <?php endif; ?>
+</div>
 
-        <!-- ">" Button: Go to the next page -->
-        <?php if ($page < $total_pages): ?>
-            <a href="?page=<?php echo $page + 1; ?>">></a>
-        <?php endif; ?>
+<style>
+.container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
 
-        <!-- ">>" Button: Go forward two pages -->
-        <?php if ($page < $total_pages - 1): ?>
-            <a href="?page=<?php echo min($total_pages, $page + 2); ?>">>></a>
-        <?php endif; ?>
-    </div>
-<?php endif; ?>
+.page-header {
+    margin-bottom: 20px;
+}
 
+.page-header h1 {
+    color: #5c1f00;
+    font-size: 24px;
+    margin: 0;
+}
 
-<script>
-// Auto-refresh the page every 30 seconds
-setTimeout(function() {
-    window.location.reload();
-}, 30000);
-</script>
+.filter-section {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: #f0f0f0;
+    color: #333;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-btn i {
+    font-size: 14px;
+}
+
+.filter-btn:hover {
+    background: #e0e0e0;
+}
+
+.filter-btn.active {
+    background: #5c1f00;
+    color: white;
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.activity-item {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    display: flex;
+    gap: 20px;
+}
+
+.activity-time {
+    color: #666;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+.activity-content {
+    flex-grow: 1;
+}
+
+.activity-description {
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.activity-meta {
+    display: flex;
+    gap: 15px;
+    font-size: 14px;
+}
+
+.activity-type {
+    color: #5c1f00;
+    font-weight: 500;
+}
+
+.activity-user {
+    color: #666;
+}
+
+.pagination {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+}
+
+.page-link {
+    padding: 8px 12px;
+    border-radius: 4px;
+    background: #f0f0f0;
+    color: #333;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    min-width: 35px;
+    text-align: center;
+}
+
+.page-link:hover {
+    background: #e0e0e0;
+}
+
+.page-link.active {
+    background: #5c1f00;
+    color: white;
+}
+
+.page-dots {
+    color: #666;
+    padding: 0 5px;
+}
+</style>
 
 <?php $mysqli->close(); ?>

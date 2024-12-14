@@ -86,9 +86,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // If no errors, proceed with update
     if (empty($errors)) {
         if (!empty($password)) {
-            // Update with new plain text password
+            // Hash the password before storing
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            // Update with new hashed password
             $stmt = $mysqli->prepare("UPDATE $table SET username = ?, email = ?, password = ?, contact = ?, role = ? WHERE username = ?");
-            $stmt->bind_param("ssssss", $new_username, $email, $password, $contact, $role, $username);
+            $stmt->bind_param("ssssss", $new_username, $email, $hashed_password, $contact, $role, $username);
         } else {
             // Update without changing password
             $stmt = $mysqli->prepare("UPDATE $table SET username = ?, email = ?, contact = ?, role = ? WHERE username = ?");

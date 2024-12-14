@@ -1,9 +1,9 @@
 <?php
 session_start();
 
-// Check if user is logged in and has Admin role
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
-    header("Location: admin-login.html");
+// Check if user is logged in and has appropriate role
+if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator', 'Driver'])) {
+    header("Location: ../admin-login.html");
     exit();
 }
 
@@ -15,224 +15,226 @@ if ($mysqli->connect_error) {
     die("Connection failed: " . $mysqli->connect_error);
 }
 
-$message = '';
-$messageType = '';
-
-// Get the logged-in admin's information
 $username = $_SESSION['username'];
-$sql = "SELECT * FROM admin WHERE username = '$username'";
-$result = $mysqli->query($sql);
+$success_message = '';
+$error_message = '';
 
-if ($result->num_rows > 0) {
-    $admin = $result->fetch_assoc();
-} else {
-    die("Admin not found.");
-}
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = $mysqli->real_escape_string($_POST['email']);
+    $contact = $mysqli->real_escape_string($_POST['contact']);
+    $current_password = $_POST['current_password'];
+    $new_password = $_POST['new_password'];
+    $confirm_password = $_POST['confirm_password'];
 
-// Handle the form submission for updating details
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $new_username = trim($_POST['username']);
-    $new_email = trim($_POST['email']);
-    $new_contact = trim($_POST['contact']);
-    $current_password = trim($_POST['current_password']);
-    $new_password = trim($_POST['new_password']);
-    $confirm_password = trim($_POST['confirm_password']);
+    // Get current user data
+    $stmt = $mysqli->prepare("SELECT password FROM admin WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
 
-    // Validate input
-    if (empty($new_username) || empty($new_email)) {
-        $message = "Please fill in all required fields.";
-        $messageType = "error";
+    // Verify current password
+    if (!password_verify($current_password, $user['password'])) {
+        $error_message = "Current password is incorrect.";
     } else {
-        // Check if username already exists
-        $stmt = $mysqli->prepare("SELECT username FROM admin WHERE username = ? AND username != ?");
-        $stmt->bind_param("ss", $new_username, $username);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        // Start building the update query
+        $updates = array();
+        $updates[] = "email = '$email'";
+        $updates[] = "contact = '$contact'";
 
-        if ($result->num_rows > 0) {
-            $message = "Username already exists. Please choose a different username.";
-            $messageType = "error";
-        } else {
-            // Verify the current password
-            if (!password_verify($current_password, $admin['password'])) {
-                $message = "Current password is incorrect.";
-                $messageType = "error";
-            } elseif ($new_password !== $confirm_password) {
-                $message = "New password and confirmation do not match.";
-                $messageType = "error";
+        // If new password is provided, update it
+        if (!empty($new_password)) {
+            if ($new_password !== $confirm_password) {
+                $error_message = "New passwords do not match.";
             } else {
-                // Update admin details
-                $update_sql = "UPDATE admin SET username = ?, email = ?, contact = ? WHERE username = ?";
-                $stmt = $mysqli->prepare($update_sql);
-                $stmt->bind_param("ssss", $new_username, $new_email, $new_contact, $username);
-
-                if ($stmt->execute()) {
-                    // Update password if it is changed
-                    if (!empty($new_password)) {
-                        $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-                        $password_update_sql = "UPDATE admin SET password = ? WHERE username = ?";
-                        $stmt = $mysqli->prepare($password_update_sql);
-                        $stmt->bind_param("ss", $hashed_password, $new_username);
-                        $stmt->execute();
-                    }
-                    
-                    $_SESSION['username'] = $new_username;
-                    $message = "Profile updated successfully!";
-                    $messageType = "success";
-                } else {
-                    $message = "Error updating profile: " . $mysqli->error;
-                    $messageType = "error";
-                }
+                $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+                $updates[] = "password = '$hashed_password'";
             }
         }
-        $stmt->close();
+
+        if (empty($error_message)) {
+            $update_query = "UPDATE admin SET " . implode(", ", $updates) . " WHERE username = '$username'";
+            if ($mysqli->query($update_query)) {
+                $success_message = "Profile updated successfully!";
+            } else {
+                $error_message = "Error updating profile: " . $mysqli->error;
+            }
+        }
     }
 }
+
+// Get current user data for form
+$stmt = $mysqli->prepare("SELECT email, contact, role FROM admin WHERE username = ?");
+$stmt->bind_param("s", $username);
+$stmt->execute();
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
 
 include 'admin-header.php';
 ?>
 
 <style>
-    .container {
-        padding: 20px 30px;
-        background: #f8f9fa;
-        min-height: calc(100vh - 72px);
+    .edit-profile-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
 
-    .page-header {
-        background: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        margin-bottom: 30px;
+    .edit-profile-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #5c1f00;
     }
 
-    .page-title {
-        margin: 0;
-        font-size: 1.5rem;
-        color: #333;
-    }
-
-    .user-form {
-        background: white;
-        padding: 30px;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        max-width: 600px;
-        margin: 0 auto;
+    .edit-profile-header h1 {
+        color: #5c1f00;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
     }
 
     .form-group {
-        margin-bottom: 20px;
+        margin-bottom: 1.5rem;
     }
 
     .form-group label {
         display: block;
-        margin-bottom: 8px;
-        color: #333;
-        font-weight: 500;
+        margin-bottom: 0.5rem;
+        color: #5c1f00;
+        font-weight: bold;
     }
 
-    .form-group input,
-    .form-group select {
+    .form-group input {
         width: 100%;
-        padding: 10px;
+        padding: 0.8rem;
         border: 1px solid #ddd;
-        border-radius: 5px;
+        border-radius: 4px;
         font-size: 1rem;
-        transition: border-color 0.3s;
     }
 
-    .form-group input:focus,
-    .form-group select:focus {
-        border-color: #5c1f00;
-        outline: none;
+    .password-section {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid #ddd;
     }
 
-    .btn-submit {
-        background: #5c1f00;
-        color: white;
-        padding: 12px 24px;
+    .btn-container {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+
+    .btn {
+        padding: 0.8rem 2rem;
         border: none;
-        border-radius: 5px;
+        border-radius: 4px;
         cursor: pointer;
         font-size: 1rem;
-        font-weight: 500;
         transition: background-color 0.3s;
     }
 
-    .btn-submit:hover {
-        background: #7a2900;
+    .btn-primary {
+        background-color: #5c1f00;
+        color: white;
     }
 
-    .message {
-        padding: 15px;
-        margin-bottom: 20px;
-        border-radius: 5px;
+    .btn-primary:hover {
+        background-color: #7a2900;
     }
 
-    .message.success {
-        background: #e8f5e9;
-        color: #2e7d32;
-        border: 1px solid #c8e6c9;
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
     }
 
-    .message.error {
-        background: #ffebee;
-        color: #c62828;
-        border: 1px solid #ffcdd2;
+    .btn-secondary:hover {
+        background-color: #5a6268;
+    }
+
+    .alert {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 4px;
+    }
+
+    .alert-success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .alert-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
     }
 </style>
 
-<div class="container">
-    <div class="page-header">
-        <h1 class="page-title">Update Admin Profile</h1>
+<div class="edit-profile-container">
+    <div class="edit-profile-header">
+        <h1>Edit Profile</h1>
+        <p>Update your account information</p>
     </div>
 
-    <?php if ($message): ?>
-        <div class="message <?php echo $messageType; ?>">
-            <?php echo $message; ?>
-        </div>
+    <?php if ($success_message): ?>
+        <div class="alert alert-success"><?php echo $success_message; ?></div>
     <?php endif; ?>
 
-    <div class="user-form">
-        <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+    <?php if ($error_message): ?>
+        <div class="alert alert-danger"><?php echo $error_message; ?></div>
+    <?php endif; ?>
+
+    <form method="POST" action="">
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" value="<?php echo htmlspecialchars($username); ?>" disabled>
+        </div>
+
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required>
+        </div>
+
+        <div class="form-group">
+            <label>Contact</label>
+            <input type="text" name="contact" value="<?php echo htmlspecialchars($user['contact']); ?>" required>
+        </div>
+
+        <div class="form-group">
+            <label>Role</label>
+            <input type="text" value="<?php echo htmlspecialchars($user['role']); ?>" disabled>
+        </div>
+
+        <div class="password-section">
+            <h3>Change Password</h3>
+            <p>Leave password fields empty if you don't want to change it</p>
+
             <div class="form-group">
-                <label for="username">Username *</label>
-                <input type="text" id="username" name="username" value="<?php echo htmlspecialchars($admin['username']); ?>" required>
+                <label>Current Password</label>
+                <input type="password" name="current_password">
             </div>
 
             <div class="form-group">
-                <label for="email">Email *</label>
-                <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($admin['email']); ?>" required>
+                <label>New Password</label>
+                <input type="password" name="new_password">
             </div>
 
             <div class="form-group">
-                <label for="contact">Contact Number</label>
-                <input type="tel" id="contact" name="contact" value="<?php echo htmlspecialchars($admin['contact']); ?>">
+                <label>Confirm New Password</label>
+                <input type="password" name="confirm_password">
             </div>
+        </div>
 
-            <!-- Password Reset Section -->
-            <div class="form-group">
-                <label for="current_password">Current Password *</label>
-                <input type="password" id="current_password" name="current_password" required>
-            </div>
-
-            <div class="form-group">
-                <label for="new_password">New Password</label>
-                <input type="password" id="new_password" name="new_password">
-            </div>
-
-            <div class="form-group">
-                <label for="confirm_password">Confirm New Password</label>
-                <input type="password" id="confirm_password" name="confirm_password">
-            </div>
-
-            <div class="form-group" style="margin-bottom: 0;">
-                <button type="submit" class="btn-submit">Save Changes</button>
-            </div>
-        </form>
-    </div>
+        <div class="btn-container">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a href="admin-profile.php" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
 </div>
 
 <?php $mysqli->close(); ?>

@@ -2,13 +2,19 @@
 session_start();
 require_once 'functions.php';
 
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
+// Check if user is logged in and has Admin or Storekeeper role
+if (!isset($_SESSION['username']) || ($_SESSION['role'] !== 'Admin' && $_SESSION['role'] !== 'Storekeeper')) {
     header("Location: ../admin-login.html");
     exit();
 }
 
 if (!isset($_GET['do'])) {
-    header("Location: delivery-orders.php");
+    // Redirect based on role
+    if ($_SESSION['role'] === 'Admin') {
+        header("Location: delivery-orders.php");
+    } else {
+        header("Location: view-delivery-orders.php");
+    }
     exit();
 }
 
@@ -139,31 +145,37 @@ include 'admin-header.php';
     }
 
     .badge {
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 500;
-        display: inline-block;
+        padding: 6px 12px !important;
+        border-radius: 20px !important;
+        font-size: 0.85rem !important;
+        font-weight: 500 !important;
+        display: inline-block !important;
         text-align: center;
         min-width: 90px;
     }
 
     .bg-warning {
-        background-color: #fff3cd;
-        color: #856404;
-        border: 1px solid #ffeeba;
+        background-color: #fff3cd !important;
+        color: #856404 !important;
+        border: 1px solid #ffeeba !important;
     }
 
     .bg-success {
-        background-color: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
+        background-color: #d4edda !important;
+        color: #155724 !important;
+        border: 1px solid #c3e6cb !important;
     }
 
     .bg-danger {
-        background-color: #f8d7da;
-        color: #721c24;
-        border: 1px solid #f5c6cb;
+        background-color: #f8d7da !important;
+        color: #721c24 !important;
+        border: 1px solid #f5c6cb !important;
+    }
+
+    .bg-info {
+        background-color: #d1ecf1 !important;
+        color: #0c5460 !important;
+        border: 1px solid #bee5eb !important;
     }
 
     .items-table {
@@ -197,7 +209,7 @@ include 'admin-header.php';
             <a href="export-do-pdf.php?do=<?php echo urlencode($do['do_number']); ?>" class="btn-print" style="background: #28a745;">
                 <i class="fas fa-file-pdf"></i> Export PDF
             </a>
-            <a href="delivery-orders.php" class="btn-back">
+            <a href="<?php echo $_SESSION['role'] === 'Admin' ? 'delivery-orders.php' : 'view-delivery-orders.php'; ?>" class="btn-back">
                 <i class="fas fa-arrow-left"></i> Back to List
             </a>
         </div>
@@ -236,6 +248,9 @@ include 'admin-header.php';
                             break;
                         case 'Cancelled':
                             $badge_class = 'badge bg-danger';
+                            break;
+                        case 'Received':
+                            $badge_class = 'badge bg-info';
                             break;
                     }
                     echo "<span class='$badge_class'>" . htmlspecialchars($status) . "</span>";

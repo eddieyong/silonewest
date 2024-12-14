@@ -4,8 +4,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if the user is logged in and has the 'Admin' role
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
+require_once 'permissions.php';
+
+// Check if user is logged in and has appropriate role
+if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator', 'Driver'])) {
     header("Location: ../admin-login.html");
     exit();
 }
@@ -129,37 +131,55 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
         </div>
         <div class="nav-items">
             <a href="admin.php"><i class="fas fa-home"></i> Dashboard</a>
-            <div class="dropdown">
-                <a href="#"><i class="fas fa-box"></i> Inventory <i class="fas fa-caret-down"></i></a>
-                <div class="dropdown-content">
-                    <a href="inventory.php"><i class="fas fa-list"></i> View Inventory</a>
-                    <a href="add-inventory.php"><i class="fas fa-plus"></i> Add Item</a>
-                    <a href="purchase-orders.php"><i class="fas fa-shopping-cart"></i> Purchase Orders</a>
-                    <a href="delivery-orders.php"><i class="fas fa-truck"></i> Delivery Orders</a>
+
+            <?php if ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'Storekeeper'): ?>
+                <div class="dropdown">
+                    <a href="#"><i class="fas fa-box"></i> Inventory <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="inventory.php"><i class="fas fa-list"></i> View Inventory</a>
+                        <a href="add-inventory.php"><i class="fas fa-plus"></i> Add Item</a>
+                    </div>
                 </div>
-            </div>
-            <div class="dropdown">
-                <a href="#"><i class="fas fa-truck"></i> Suppliers <i class="fas fa-caret-down"></i></a>
-                <div class="dropdown-content">
-                    <a href="view-suppliers.php"><i class="fas fa-list"></i> View Suppliers</a>
-                    <a href="add-supplier.php"><i class="fas fa-plus"></i> Add Supplier</a>
+            <?php endif; ?>
+
+            <?php if ($_SESSION['role'] === 'Admin'): ?>
+                <div class="dropdown">
+                    <a href="#"><i class="fas fa-truck"></i> Suppliers <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="view-suppliers.php"><i class="fas fa-list"></i> View Suppliers</a>
+                        <a href="add-supplier.php"><i class="fas fa-plus"></i> Add Supplier</a>
+                    </div>
                 </div>
-            </div>
-            <div class="dropdown">
-                <a href="#"><i class="fas fa-users"></i> Users <i class="fas fa-caret-down"></i></a>
-                <div class="dropdown-content">
-                    <a href="manage-users.php"><i class="fas fa-list"></i> View Users</a>
-                    <a href="add-user.php"><i class="fas fa-user-plus"></i> Add User</a>
+
+                <div class="dropdown">
+                    <a href="#"><i class="fas fa-users"></i> Users <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="manage-users.php"><i class="fas fa-list"></i> View Users</a>
+                        <a href="add-user.php"><i class="fas fa-user-plus"></i> Add User</a>
+                    </div>
                 </div>
-            </div>
-            <div class="dropdown">
-                <a href="#"><i class="fas fa-car"></i> Vehicles <i class="fas fa-caret-down"></i></a>
-                <div class="dropdown-content">
-                    <a href="view-vehicles.php"><i class="fas fa-list"></i> View Vehicles</a>
-                    <a href="add-vehicle.php"><i class="fas fa-plus"></i> Add Vehicle</a>
+
+                <div class="dropdown">
+                    <a href="#"><i class="fas fa-car"></i> Vehicles <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="view-vehicles.php"><i class="fas fa-list"></i> View Vehicles</a>
+                        <a href="add-vehicle.php"><i class="fas fa-plus"></i> Add Vehicle</a>
+                    </div>
                 </div>
-            </div>
-            <a href="history.php"><i class="fas fa-history"></i> History</a>
+
+                <div class="dropdown">
+                    <a href="#"><i class="fas fa-warehouse"></i> Warehouse <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="warehouse-maintenance.php"><i class="fas fa-tools"></i> Maintenance</a>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'Storekeeper'): ?>
+                <a href="manage-notifications.php"><i class="fas fa-bell"></i> Notifications</a>
+                <a href="history.php"><i class="fas fa-history"></i> History</a>
+            <?php endif; ?>
+
             <a href="admin-profile.php"><i class="fas fa-user"></i> Profile</a>
             <a href="logout.php" class="logout-btn" onclick="return confirm('Are you sure you want to logout?');">
                 <i class="fas fa-sign-out-alt"></i> Logout

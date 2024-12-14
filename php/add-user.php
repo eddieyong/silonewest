@@ -31,8 +31,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $message = "Please fill in all required fields.";
         $messageType = "error";
     } else {
-        // Determine which table to check based on role
-        $table = ($role === 'Admin') ? 'admin' : 'customer';
+        // Determine which table to use based on role
+        $table = ($role === 'Customer') ? 'customer' : 'admin';
         
         // Check if username already exists in both tables
         $stmt = $mysqli->prepare("SELECT username FROM admin WHERE username = ? UNION SELECT username FROM customer WHERE username = ?");
@@ -46,14 +46,38 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } else {
             // Insert new user into appropriate table with plain text password
             $stmt = $mysqli->prepare("INSERT INTO $table (username, email, password, contact, role, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-            $stmt->bind_param("sssss", $username, $email, $password, $contact, $role);
+            
+            // Hash the password before storing
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            
+            $stmt->bind_param("sssss", $username, $email, $hashed_password, $contact, $role);
             
             if ($stmt->execute()) {
-                // Log the activity
-                $description = "Added new {$role} user: {$username} (Email: {$email}, Contact: {$contact})";
-                logActivity($mysqli, 'user', $description);
+                // Log the activity with role-specific details
+                $description = "Added new {$role}: {$username} (Email: {$email}, Contact: {$contact})";
+                if ($role === 'Driver') {
+                    $description .= " - Will have access to DO, PO, and vehicle schedules";
+                } elseif ($role === 'Storekeeper') {
+                    $description .= " - Will manage inventory and stock operations";
+                } elseif ($role === 'Coordinator') {
+                    $description .= " - Will have view access to inventory and deliveries";
+                }
                 
-                $_SESSION['success_msg'] = "User added successfully!";
+                $activity_type = 'user';
+                $admin_username = $_SESSION['username'];
+                $timestamp = date('Y-m-d H:i:s');
+                $full_description = "By $admin_username: $description";
+                
+                $log_stmt = $mysqli->prepare("INSERT INTO activities (activity_type, description, created_by, created_at) VALUES (?, ?, ?, ?)");
+                $log_stmt->bind_param("ssss", $activity_type, $full_description, $admin_username, $timestamp);
+                
+                if ($log_stmt->execute()) {
+                    $_SESSION['success_msg'] = "User added successfully!";
+                } else {
+                    $_SESSION['success_msg'] = "User added but failed to log activity: " . $mysqli->error;
+                }
+                $log_stmt->close();
+                
                 header("Location: manage-users.php");
                 exit();
             } else {
@@ -197,8 +221,11 @@ include 'admin-header.php';
             <div class="form-group">
                 <label for="role">Role *</label>
                 <select id="role" name="role" required>
-                    <option value="Customer">Customer</option>
                     <option value="Admin">Admin</option>
+                    <option value="Storekeeper">Storekeeper</option>
+                    <option value="Coordinator">Coordinator</option>
+                    <option value="Driver">Driver</option>
+                    <option value="Customer">Customer</option>
                 </select>
             </div>
 

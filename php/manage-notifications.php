@@ -1,8 +1,8 @@
 <?php
 session_start();
 
-// Check if user is logged in and has Admin role
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
+// Check if user is logged in and has appropriate role
+if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Storekeeper'])) {
     header("Location: ../admin-login.html");
     exit();
 }
@@ -15,8 +15,15 @@ if ($mysqli->connect_error) {
     die("Connection failed: " . $mysqli->connect_error);
 }
 
-// Handle form submission
+// Handle form submission - Only for Admin
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Check if user is Admin
+    if ($_SESSION['role'] !== 'Admin') {
+        $_SESSION['error_message'] = "You don't have permission to perform this action.";
+        header("Location: manage-notifications.php");
+        exit();
+    }
+
     if (isset($_POST['action'])) {
         if ($_POST['action'] === 'create') {
             $title = $mysqli->real_escape_string($_POST['title']);
@@ -423,9 +430,11 @@ include 'admin-header.php';
         <h1 class="page-title">
             <i class="fas fa-bell"></i> Manage Notifications
         </h1>
+        <?php if ($_SESSION['role'] === 'Admin'): ?>
         <button class="action-button" onclick="openCreateModal()">
             <i class="fas fa-plus"></i> Create Notification
         </button>
+        <?php endif; ?>
     </div>
 
     <?php if (isset($success_message)): ?>
@@ -478,30 +487,32 @@ include 'admin-header.php';
                     <?php echo nl2br(htmlspecialchars($notification['message'])); ?>
                 </div>
                 <div class="notification-actions">
-                    <?php if ($current_tab === 'active'): ?>
+                    <?php if ($_SESSION['role'] === 'Admin'): ?>
+                        <?php if ($current_tab === 'active'): ?>
+                            <form method="POST" style="display: inline;">
+                                <input type="hidden" name="action" value="archive">
+                                <input type="hidden" name="notification_id" value="<?php echo $notification['id']; ?>">
+                                <button type="submit" class="btn btn-archive" onclick="return confirm('Are you sure you want to archive this notification?')">
+                                    <i class="fas fa-archive"></i> Archive
+                                </button>
+                            </form>
+                        <?php else: ?>
+                            <form method="POST" style="display: inline;">
+                                <input type="hidden" name="action" value="restore">
+                                <input type="hidden" name="notification_id" value="<?php echo $notification['id']; ?>">
+                                <button type="submit" class="btn btn-restore" onclick="return confirm('Are you sure you want to restore this notification?')">
+                                    <i class="fas fa-undo"></i> Restore
+                                </button>
+                            </form>
+                        <?php endif; ?>
                         <form method="POST" style="display: inline;">
-                            <input type="hidden" name="action" value="archive">
+                            <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="notification_id" value="<?php echo $notification['id']; ?>">
-                            <button type="submit" class="btn btn-archive" onclick="return confirm('Are you sure you want to archive this notification?')">
-                                <i class="fas fa-archive"></i> Archive
-                            </button>
-                        </form>
-                    <?php else: ?>
-                        <form method="POST" style="display: inline;">
-                            <input type="hidden" name="action" value="restore">
-                            <input type="hidden" name="notification_id" value="<?php echo $notification['id']; ?>">
-                            <button type="submit" class="btn btn-restore" onclick="return confirm('Are you sure you want to restore this notification?')">
-                                <i class="fas fa-undo"></i> Restore
+                            <button type="submit" class="btn btn-delete" onclick="return confirm('Are you sure you want to permanently delete this notification? This action cannot be undone.')">
+                                <i class="fas fa-trash-alt"></i> Delete
                             </button>
                         </form>
                     <?php endif; ?>
-                    <form method="POST" style="display: inline;">
-                        <input type="hidden" name="action" value="delete">
-                        <input type="hidden" name="notification_id" value="<?php echo $notification['id']; ?>">
-                        <button type="submit" class="btn btn-delete" onclick="return confirm('Are you sure you want to permanently delete this notification? This action cannot be undone.')">
-                            <i class="fas fa-trash-alt"></i> Delete
-                        </button>
-                    </form>
                 </div>
             </div>
         <?php endwhile; ?>

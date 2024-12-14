@@ -2,9 +2,10 @@
 session_start();
 require_once 'functions.php';
 
-// Check if user is logged in and has Admin role
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
-    header("Location: ../admin-login.html");
+// Check if user is logged in and has Admin or Storekeeper role
+if (!isset($_SESSION['username']) || ($_SESSION['role'] !== 'Admin' && $_SESSION['role'] !== 'Storekeeper')) {
+    header("Location: inventory.php");
+    $_SESSION['error_msg'] = "You don't have permission to access Delivery Orders.";
     exit();
 }
 
@@ -145,7 +146,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_do'])) {
     exit();
 }
 
-// Get all purchase orders for dropdown
+// Get all vehicles for dropdown
+$vehicles_query = "SELECT vehicle_number FROM vehicles ORDER BY vehicle_number";
+$vehicles_result = $mysqli->query($vehicles_query);
+
+// Get all PO numbers for dropdown
 $po_query = "SELECT po_number FROM purchase_orders WHERE status = 'Completed' ORDER BY created_at DESC";
 $po_result = $mysqli->query($po_query);
 
@@ -158,7 +163,6 @@ $result = $mysqli->query($query);
 
 include 'admin-header.php';
 ?>
-
 <style>
     .container {
         padding: 20px 30px;
@@ -515,7 +519,7 @@ include 'admin-header.php';
             ?>
         </div>
     <?php endif; ?>
-
+    
     <?php if (isset($_SESSION['error_msg'])): ?>
         <div class="alert alert-danger">
             <?php 
@@ -524,7 +528,7 @@ include 'admin-header.php';
             ?>
         </div>
     <?php endif; ?>
-
+    
     <div class="table-container">
         <table class="table">
             <thead>
@@ -634,7 +638,14 @@ include 'admin-header.php';
                 </div>
                 <div class="form-group">
                     <label for="vehicle_number">Vehicle Number</label>
-                    <input type="text" name="vehicle_number" id="vehicle_number" class="form-control">
+                    <select name="vehicle_number" id="vehicle_number" class="form-control">
+                        <option value="">Select Vehicle Number</option>
+                        <?php while ($vehicle = $vehicles_result->fetch_assoc()): ?>
+                            <option value="<?php echo htmlspecialchars($vehicle['vehicle_number']); ?>">
+                                <?php echo htmlspecialchars($vehicle['vehicle_number']); ?>
+                            </option>
+                        <?php endwhile; ?>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="driver_name">Driver Name</label>
@@ -757,6 +768,3 @@ function deleteDO(doNumber) {
 </script>
 
 <?php $mysqli->close(); ?>
-```
-
-This includes all the necessary CSS styling from purchase-orders.php and maintains the same look and feel. Would you like me to create the supporting files (get-po-items.php and update-do-status.php) next?
