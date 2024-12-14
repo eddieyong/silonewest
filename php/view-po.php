@@ -2,11 +2,21 @@
 session_start();
 require_once 'functions.php';
 
-// Check if user is logged in and has Admin role
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
+// Check if user is logged in
+if (!isset($_SESSION['username'])) {
     header("Location: ../admin-login.html");
     exit();
 }
+
+// Check if user has permission to access Purchase Orders
+if (!in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator'])) {
+    header("Location: inventory.php");
+    $_SESSION['error_msg'] = "You don't have permission to view Purchase Orders.";
+    exit();
+}
+
+// Set view-only mode for Coordinator
+$isViewOnly = ($_SESSION['role'] === 'Coordinator');
 
 // Database connection
 $mysqli = new mysqli("localhost", "root", "", "fyp");

@@ -118,6 +118,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 $mysqli->close();
+
+// If it's an AJAX request, send JSON response
+if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+    $response = [
+        'success' => isset($_SESSION['success_msg']),
+        'message' => $_SESSION['success_msg'] ?? $_SESSION['error_msg'] ?? ''
+    ];
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit();
+}
+
+// Otherwise redirect
 header("Location: inventory.php");
 exit();
 ?> 

@@ -2,19 +2,24 @@
 session_start();
 require_once 'functions.php';
 
-// Check if user is logged in and has Admin or Storekeeper role
-if (!isset($_SESSION['username']) || ($_SESSION['role'] !== 'Admin' && $_SESSION['role'] !== 'Storekeeper')) {
+// Check if user is logged in
+if (!isset($_SESSION['username'])) {
     header("Location: ../admin-login.html");
     exit();
 }
 
+// Check if user has permission to access Delivery Orders
+if (!in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator'])) {
+    header("Location: inventory.php");
+    $_SESSION['error_msg'] = "You don't have permission to view Delivery Orders.";
+    exit();
+}
+
+// Set view-only mode for Coordinator
+$isViewOnly = ($_SESSION['role'] === 'Coordinator');
+
 if (!isset($_GET['do'])) {
-    // Redirect based on role
-    if ($_SESSION['role'] === 'Admin') {
-        header("Location: delivery-orders.php");
-    } else {
-        header("Location: view-delivery-orders.php");
-    }
+    header("Location: delivery-orders.php");
     exit();
 }
 

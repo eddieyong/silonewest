@@ -150,10 +150,10 @@ include 'admin-header.php';
                 <div class="card-icon">📋</div>
                 <h2 class="card-title">Orders</h2>
                 <div class="card-buttons">
-                    <a href="view-purchase-orders.php" class="card-btn">
+                    <a href="purchase-orders.php" class="card-btn">
                         <i class="fas fa-shopping-cart"></i> Purchase Orders
                     </a>
-                    <a href="view-delivery-orders.php" class="card-btn">
+                    <a href="delivery-orders.php" class="card-btn">
                         <i class="fas fa-truck"></i> Delivery Orders
                     </a>
                 </div>

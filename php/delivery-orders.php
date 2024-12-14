@@ -2,12 +2,22 @@
 session_start();
 require_once 'functions.php';
 
-// Check if user is logged in and has Admin or Storekeeper role
-if (!isset($_SESSION['username']) || ($_SESSION['role'] !== 'Admin' && $_SESSION['role'] !== 'Storekeeper')) {
+// Check if user is logged in
+if (!isset($_SESSION['username'])) {
+    header("Location: inventory.php");
+    $_SESSION['error_msg'] = "You need to login first.";
+    exit();
+}
+
+// Check if user has permission to access Delivery Orders
+if (!in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator'])) {
     header("Location: inventory.php");
     $_SESSION['error_msg'] = "You don't have permission to access Delivery Orders.";
     exit();
 }
+
+// Set view-only mode for Coordinator
+$isViewOnly = ($_SESSION['role'] === 'Coordinator');
 
 $mysqli = new mysqli("localhost", "root", "", "fyp");
 
@@ -506,9 +516,11 @@ include 'admin-header.php';
 <div class="container">
     <div class="page-header">
         <h1 class="page-title">Delivery Orders</h1>
-        <button class="btn-primary" onclick="openCreateDOModal()">
-            <i class="fas fa-plus"></i> Create New DO
-        </button>
+        <?php if (!$isViewOnly): ?>
+            <button class="btn-primary" onclick="openCreateDOModal()">
+                <i class="fas fa-plus"></i> Create New DO
+            </button>
+        <?php endif; ?>
     </div>
 
     <?php if (isset($_SESSION['success_msg'])): ?>
@@ -577,16 +589,18 @@ include 'admin-header.php';
                                 <a href="view-do.php?do=<?php echo $row['do_number']; ?>" class="btn-view">
                                     <i class="fas fa-eye"></i> View
                                 </a>
-                                <?php if ($row['status'] === 'Pending'): ?>
-                                    <select class="form-select status-select" onchange="updateStatus(this, '<?php echo $row['do_number']; ?>')">
-                                        <option value="">Change Status</option>
-                                        <option value="Completed">Completed</option>
-                                        <option value="Cancelled">Cancelled</option>
-                                    </select>
+                                <?php if (!$isViewOnly): ?>
+                                    <?php if ($row['status'] === 'Pending'): ?>
+                                        <select class="form-select status-select" onchange="updateStatus(this, '<?php echo $row['do_number']; ?>')">
+                                            <option value="">Change Status</option>
+                                            <option value="Completed">Completed</option>
+                                            <option value="Cancelled">Cancelled</option>
+                                        </select>
+                                    <?php endif; ?>
+                                    <button onclick="deleteDO('<?php echo $row['do_number']; ?>')" class="btn-delete">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
                                 <?php endif; ?>
-                                <button onclick="deleteDO('<?php echo $row['do_number']; ?>')" class="btn-delete">
-                                    <i class="fas fa-trash"></i> Delete
-                                </button>
                             </div>
                         </td>
                     </tr>

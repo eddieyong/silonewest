@@ -2,12 +2,22 @@
 session_start();
 require_once 'functions.php';
 
-// Check if user is logged in and has Admin or Storekeeper role
-if (!isset($_SESSION['username']) || ($_SESSION['role'] !== 'Admin' && $_SESSION['role'] !== 'Storekeeper')) {
+// Check if user is logged in
+if (!isset($_SESSION['username'])) {
+    header("Location: inventory.php");
+    $_SESSION['error_msg'] = "You need to login first.";
+    exit();
+}
+
+// Check if user has permission to access Purchase Orders
+if (!in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator'])) {
     header("Location: inventory.php");
     $_SESSION['error_msg'] = "You don't have permission to access Purchase Orders.";
     exit();
 }
+
+// Set view-only mode for Coordinator
+$isViewOnly = ($_SESSION['role'] === 'Coordinator');
 
 $mysqli = new mysqli("localhost", "root", "", "fyp");
 
@@ -718,9 +728,11 @@ include 'admin-header.php';
 <div class="container">
     <div class="page-header">
         <h1 class="page-title">Purchase Orders</h1>
-        <button class="btn-primary" onclick="openCreatePOModal()">
-            <i class="fas fa-plus"></i> Create New PO
-        </button>
+        <?php if (!$isViewOnly): ?>
+            <button class="btn-primary" onclick="openCreatePOModal()">
+                <i class="fas fa-plus"></i> Create New PO
+            </button>
+        <?php endif; ?>
     </div>
 
     <?php if (isset($_SESSION['success_msg'])): ?>
@@ -795,17 +807,17 @@ include 'admin-header.php';
                                 <a href="view-po.php?po=<?php echo $row['po_number']; ?>" class="btn-view">
                                     <i class="fas fa-eye"></i> View
                                 </a>
-                                <?php if ($row['status'] === 'Pending' || $row['status'] === 'Received'): ?>
+                                <?php if (!$isViewOnly && ($row['status'] === 'Pending' || $row['status'] === 'Received')): ?>
                                     <select class="form-select status-select" onchange="updateStatus(this, '<?php echo $row['po_number']; ?>')">
                                         <option value="">Change Status</option>
                                         <option value="Completed">Completed</option>
                                         <option value="Cancelled">Cancelled</option>
                                         <option value="Received">Received</option>
                                     </select>
+                                    <button onclick="deletePO('<?php echo $row['po_number']; ?>')" class="btn-delete">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
                                 <?php endif; ?>
-                                <button onclick="deletePO('<?php echo $row['po_number']; ?>')" class="btn-delete">
-                                    <i class="fas fa-trash"></i> Delete
-                                </button>
                             </div>
                         </td>
                     </tr>

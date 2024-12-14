@@ -121,6 +121,24 @@ $result = $mysqli->query($query);
 include 'admin-header.php';
 ?>
 
+<?php if (isset($_SESSION['success_msg'])): ?>
+    <div class="alert alert-success">
+        <?php 
+            echo $_SESSION['success_msg'];
+            unset($_SESSION['success_msg']);
+        ?>
+    </div>
+<?php endif; ?>
+
+<?php if (isset($_SESSION['error_msg'])): ?>
+    <div class="alert alert-danger">
+        <?php 
+            echo $_SESSION['error_msg'];
+            unset($_SESSION['error_msg']);
+        ?>
+    </div>
+<?php endif; ?>
+
 <div class="container">
     <div class="page-header">
         <h1>Inventory Management</h1>
@@ -140,6 +158,12 @@ include 'admin-header.php';
                 </a>
                 <a href="#" class="btn btn-brown" id="openStockOutPopup">
                     <i class="fas fa-arrow-up"></i> Stock Out
+                </a>
+                <a href="purchase-orders.php" class="btn btn-success">
+                    <i class="fas fa-shopping-cart"></i> Purchase Orders
+                </a>
+                <a href="delivery-orders.php" class="btn btn-info">
+                    <i class="fas fa-truck"></i> Delivery Orders
                 </a>
             <?php endif; ?>
         </div>
@@ -223,6 +247,42 @@ include 'admin-header.php';
     </div>
 </div>
 
+<!-- Stock In Modal -->
+<div id="stockInModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Stock In</h2>
+        <form id="stockInForm" action="update-stock.php?action=stock_in" method="POST">
+            <div id="stockInItems">
+                <div class="stock-item">
+                    <input type="text" name="items[0][bar_code]" placeholder="Bar Code" required>
+                    <input type="number" name="items[0][amount]" placeholder="Amount" required min="1">
+                </div>
+            </div>
+            <button type="button" class="btn btn-brown add-item">Add Another Item</button>
+            <button type="submit" class="btn btn-brown">Submit Stock In</button>
+        </form>
+    </div>
+</div>
+
+<!-- Stock Out Modal -->
+<div id="stockOutModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Stock Out</h2>
+        <form id="stockOutForm" action="update-stock.php?action=stock_out" method="POST">
+            <div id="stockOutItems">
+                <div class="stock-item">
+                    <input type="text" name="items[0][bar_code]" placeholder="Bar Code" required>
+                    <input type="number" name="items[0][amount]" placeholder="Amount" required min="1">
+                </div>
+            </div>
+            <button type="button" class="btn btn-brown add-item">Add Another Item</button>
+            <button type="submit" class="btn btn-brown">Submit Stock Out</button>
+        </form>
+    </div>
+</div>
+
 <style>
     .container {
         padding: 30px;
@@ -280,6 +340,26 @@ include 'admin-header.php';
 
     .btn-green:hover {
         background-color: #006600;
+        color: white;
+        text-decoration: none;
+    }
+
+    .btn-success {
+        background-color: #28a745;
+    }
+
+    .btn-success:hover {
+        background-color: #218838;
+        color: white;
+        text-decoration: none;
+    }
+
+    .btn-info {
+        background-color: #17a2b8;
+    }
+
+    .btn-info:hover {
+        background-color: #138496;
         color: white;
         text-decoration: none;
     }
@@ -365,6 +445,83 @@ include 'admin-header.php';
         font-size: 24px;
         margin: 0;
     }
+
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 5px;
+    }
+
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .close:hover {
+        color: black;
+    }
+
+    .stock-item {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .stock-item input {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .modal form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .modal h2 {
+        margin-top: 0;
+        color: #5c1f00;
+    }
+
+    .alert {
+        padding: 15px;
+        margin-bottom: 20px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+    }
+
+    .alert-success {
+        color: #0f5132;
+        background-color: #d1e7dd;
+        border-color: #badbcc;
+    }
+
+    .alert-danger {
+        color: #842029;
+        background-color: #f8d7da;
+        border-color: #f5c2c7;
+    }
 </style>
 
 <script>
@@ -393,6 +550,97 @@ function debounce(func, wait) {
         timeout = setTimeout(later, wait);
     };
 }
+
+// Modal functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Get modal elements
+    const stockInModal = document.getElementById('stockInModal');
+    const stockOutModal = document.getElementById('stockOutModal');
+    
+    // Get buttons that open the modals
+    const stockInBtn = document.getElementById('openStockInPopup');
+    const stockOutBtn = document.getElementById('openStockOutPopup');
+    
+    // Get close buttons
+    const closeButtons = document.getElementsByClassName('close');
+    
+    // Open Stock In Modal
+    stockInBtn.onclick = function() {
+        stockInModal.style.display = 'block';
+    }
+    
+    // Open Stock Out Modal
+    stockOutBtn.onclick = function() {
+        stockOutModal.style.display = 'block';
+    }
+    
+    // Close modals when clicking (x)
+    Array.from(closeButtons).forEach(button => {
+        button.onclick = function() {
+            stockInModal.style.display = 'none';
+            stockOutModal.style.display = 'none';
+        }
+    });
+    
+    // Close modals when clicking outside
+    window.onclick = function(event) {
+        if (event.target == stockInModal) {
+            stockInModal.style.display = 'none';
+        }
+        if (event.target == stockOutModal) {
+            stockOutModal.style.display = 'none';
+        }
+    }
+
+    // Add item functionality
+    document.querySelectorAll('.add-item').forEach(button => {
+        button.onclick = function() {
+            const itemsContainer = this.closest('form').querySelector('.stock-item').parentElement;
+            const newIndex = itemsContainer.children.length;
+            const newItem = document.createElement('div');
+            newItem.className = 'stock-item';
+            newItem.innerHTML = `
+                <input type="text" name="items[${newIndex}][bar_code]" placeholder="Bar Code" required>
+                <input type="number" name="items[${newIndex}][amount]" placeholder="Amount" required min="1">
+                <button type="button" class="btn btn-red remove-item" onclick="this.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            itemsContainer.appendChild(newItem);
+        }
+    });
+
+    // Form submission handling
+    const forms = document.querySelectorAll('#stockInForm, #stockOutForm');
+    forms.forEach(form => {
+        form.onsubmit = function(e) {
+            e.preventDefault();
+            const formData = new FormData(form);
+            
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                // Close the modal
+                stockInModal.style.display = 'none';
+                stockOutModal.style.display = 'none';
+                // Reload the page to show updated inventory and success message
+                window.location.href = 'inventory.php';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while processing your request.');
+            });
+        }
+    });
+});
 </script>
 
 <?php $mysqli->close(); ?>
