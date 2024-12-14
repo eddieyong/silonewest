@@ -70,8 +70,35 @@ include 'admin-header.php';
                     <a href="inventory.php" class="card-btn">
                         <i class="fas fa-boxes"></i> Manage Inventory
                     </a>
-                    <a href="view-stock.php" class="card-btn">
-                        <i class="fas fa-eye"></i> View Stock
+                    <?php if ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'Storekeeper'): ?>
+                        <a href="view-stock.php" class="card-btn">
+                            <i class="fas fa-eye"></i> View Stock
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($_SESSION['role'] === 'Coordinator'): ?>
+            <div class="quick-access-card">
+                <div class="card-icon">📦</div>
+                <h2 class="card-title">Inventory</h2>
+                <div class="card-buttons">
+                    <a href="inventory.php" class="card-btn">
+                        <i class="fas fa-boxes"></i> View Inventory
+                    </a>
+                </div>
+            </div>
+
+            <div class="quick-access-card">
+                <div class="card-icon">🚚</div>
+                <h2 class="card-title">Deliveries</h2>
+                <div class="card-buttons">
+                    <a href="purchase-orders.php" class="card-btn">
+                        <i class="fas fa-file-invoice"></i> Purchase Orders
+                    </a>
+                    <a href="delivery-orders.php" class="card-btn">
+                        <i class="fas fa-shipping-fast"></i> Delivery Orders
                     </a>
                 </div>
             </div>
@@ -184,60 +211,98 @@ include 'admin-header.php';
         <div class="dashboard-section">
             <h2 class="section-title">
                 <span><i class="fas fa-bell"></i> Notifications & Activities</span>
-                <a href="history.php" class="view-all">View All</a>
+                <?php if ($_SESSION['role'] !== 'Coordinator'): ?>
+                    <a href="history.php" class="view-all">View All</a>
+                <?php endif; ?>
             </h2>
 
-            <div class="tab-container">
-                <button class="tab-button active" onclick="switchTab('alerts')">
-                    <i class="fas fa-exclamation-circle"></i> Alerts
-                </button>
-                <button class="tab-button" onclick="switchTab('activities')">
-                    <i class="fas fa-history"></i> Recent Activities
-                </button>
-            </div>
+            <?php if ($_SESSION['role'] === 'Coordinator'): ?>
+                <?php
+                // Get recent delivery activities
+                $recent_activities = $mysqli->query("
+                    SELECT *, CONVERT_TZ(created_at, @@session.time_zone, '+08:00') as created_at_local 
+                    FROM activities 
+                    WHERE activity_type IN ('purchase_order', 'delivery_order')
+                    ORDER BY created_at DESC 
+                    LIMIT 10
+                ");
+                ?>
 
-            <div id="alerts-tab" class="tab-content active">
-                <?php if ($low_stock_items && $low_stock_items->num_rows > 0): ?>
-                    <?php while ($item = $low_stock_items->fetch_assoc()): ?>
-                        <div class="notification-item alert">
-                            <div class="notification-title">
-                                <span>Low Stock Alert: <?php echo htmlspecialchars($item['item_name']); ?></span>
+                <div class="activities-list">
+                    <?php if ($recent_activities && $recent_activities->num_rows > 0): ?>
+                        <?php while ($activity = $recent_activities->fetch_assoc()): ?>
+                            <div class="notification-item activity">
+                                <div class="notification-title">
+                                    <span><?php echo ucfirst(str_replace('_', ' ', $activity['activity_type'])); ?></span>
+                                    <span class="notification-time">
+                                        <?php echo date('M d, H:i', strtotime($activity['created_at_local'])); ?>
+                                    </span>
+                                </div>
+                                <div class="notification-subtitle">
+                                    <?php echo htmlspecialchars($activity['description']); ?>
+                                </div>
                             </div>
-                            <div class="notification-subtitle">
-                                Current balance: <?php echo $item['balance']; ?> units
-                            </div>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <div class="notification-item">
+                            <div class="notification-title">No Recent Activities</div>
+                            <div class="notification-subtitle">No delivery activities recorded yet</div>
                         </div>
-                    <?php endwhile; ?>
-                <?php else: ?>
-                    <div class="notification-item">
-                        <div class="notification-title">No Low Stock Alerts</div>
-                        <div class="notification-subtitle">All items are above minimum stock levels</div>
-                    </div>
-                <?php endif; ?>
-            </div>
+                    <?php endif; ?>
+                </div>
+            <?php else: ?>
+                <div class="tab-container">
+                    <button class="tab-button active" onclick="switchTab('alerts')">
+                        <i class="fas fa-exclamation-circle"></i> Alerts
+                    </button>
+                    <button class="tab-button" onclick="switchTab('activities')">
+                        <i class="fas fa-history"></i> Recent Activities
+                    </button>
+                </div>
 
-            <div id="activities-tab" class="tab-content">
-                <?php if ($recent_activities && $recent_activities->num_rows > 0): ?>
-                    <?php while ($activity = $recent_activities->fetch_assoc()): ?>
-                        <div class="notification-item activity">
-                            <div class="notification-title">
-                                <span><?php echo htmlspecialchars($activity['activity_type']); ?></span>
-                                <span class="notification-time">
-                                    <?php echo date('M d, H:i', strtotime($activity['created_at_local'])); ?>
-                                </span>
+                <div id="alerts-tab" class="tab-content active">
+                    <?php if ($low_stock_items && $low_stock_items->num_rows > 0): ?>
+                        <?php while ($item = $low_stock_items->fetch_assoc()): ?>
+                            <div class="notification-item alert">
+                                <div class="notification-title">
+                                    <span>Low Stock Alert: <?php echo htmlspecialchars($item['item_name']); ?></span>
+                                </div>
+                                <div class="notification-subtitle">
+                                    Current balance: <?php echo $item['balance']; ?> units
+                                </div>
                             </div>
-                            <div class="notification-subtitle">
-                                <?php echo htmlspecialchars($activity['description']); ?>
-                            </div>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <div class="notification-item">
+                            <div class="notification-title">No Low Stock Alerts</div>
+                            <div class="notification-subtitle">All items are above minimum stock levels</div>
                         </div>
-                    <?php endwhile; ?>
-                <?php else: ?>
-                    <div class="notification-item">
-                        <div class="notification-title">No Recent Activities</div>
-                        <div class="notification-subtitle">No system activities recorded yet</div>
-                    </div>
-                <?php endif; ?>
-            </div>
+                    <?php endif; ?>
+                </div>
+
+                <div id="activities-tab" class="tab-content">
+                    <?php if ($recent_activities && $recent_activities->num_rows > 0): ?>
+                        <?php while ($activity = $recent_activities->fetch_assoc()): ?>
+                            <div class="notification-item activity">
+                                <div class="notification-title">
+                                    <span><?php echo htmlspecialchars($activity['activity_type']); ?></span>
+                                    <span class="notification-time">
+                                        <?php echo date('M d, H:i', strtotime($activity['created_at_local'])); ?>
+                                    </span>
+                                </div>
+                                <div class="notification-subtitle">
+                                    <?php echo htmlspecialchars($activity['description']); ?>
+                                </div>
+                            </div>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <div class="notification-item">
+                            <div class="notification-title">No Recent Activities</div>
+                            <div class="notification-subtitle">No system activities recorded yet</div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -312,8 +377,9 @@ include 'admin-header.php';
 
     .dashboard-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, 1fr);
         gap: 20px;
+        margin-bottom: 30px;
     }
 
     .dashboard-section {
@@ -321,6 +387,7 @@ include 'admin-header.php';
         padding: 20px;
         border-radius: 10px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        height: fit-content;
     }
 
     .section-title {
@@ -430,6 +497,81 @@ include 'admin-header.php';
 
     .tab-content.active {
         display: block;
+    }
+
+    /* Additional styles for Coordinator dashboard */
+    .deliveries-list {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .delivery-item {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        transition: transform 0.3s;
+    }
+
+    .delivery-item:hover {
+        transform: translateX(5px);
+    }
+
+    .delivery-icon {
+        width: 40px;
+        height: 40px;
+        background: #5c1f00;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .delivery-content {
+        flex-grow: 1;
+    }
+
+    .delivery-title {
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 5px;
+    }
+
+    .delivery-meta {
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .view-btn {
+        padding: 8px;
+        background: #5c1f00;
+        color: white;
+        border-radius: 5px;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.3s;
+    }
+
+    .view-btn:hover {
+        background: #7a2900;
+        color: white;
+    }
+
+    .no-deliveries {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+    }
+
+    .activities-list {
+        max-height: 500px;
+        overflow-y: auto;
     }
 </style>
 

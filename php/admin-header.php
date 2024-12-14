@@ -137,9 +137,13 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
                     <a href="#"><i class="fas fa-box"></i> Inventory <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
                         <a href="inventory.php"><i class="fas fa-list"></i> View Inventory</a>
-                        <a href="add-inventory.php"><i class="fas fa-plus"></i> Add Item</a>
+                        <?php if ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'Storekeeper'): ?>
+                            <a href="add-inventory.php"><i class="fas fa-plus"></i> Add Item</a>
+                        <?php endif; ?>
                     </div>
                 </div>
+            <?php elseif ($_SESSION['role'] === 'Coordinator'): ?>
+                <a href="inventory.php"><i class="fas fa-box"></i> View Inventory</a>
             <?php endif; ?>
 
             <?php if ($_SESSION['role'] === 'Admin'): ?>
@@ -177,6 +181,17 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
 
             <?php if ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'Storekeeper'): ?>
                 <a href="manage-notifications.php"><i class="fas fa-bell"></i> Notifications</a>
+                <a href="history.php"><i class="fas fa-history"></i> History</a>
+            <?php endif; ?>
+
+            <?php if ($_SESSION['role'] === 'Coordinator'): ?>
+                <div class="dropdown">
+                    <a href="#"><i class="fas fa-truck"></i> Deliveries <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="purchase-orders.php"><i class="fas fa-file-invoice"></i> Purchase Orders</a>
+                        <a href="delivery-orders.php"><i class="fas fa-shipping-fast"></i> Delivery Orders</a>
+                    </div>
+                </div>
                 <a href="history.php"><i class="fas fa-history"></i> History</a>
             <?php endif; ?>
 

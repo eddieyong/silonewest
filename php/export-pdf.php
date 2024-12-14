@@ -3,7 +3,7 @@
 session_start();
 
 // Check if the user is logged in and has the appropriate role
-if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Storekeeper'])) {
+if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator'])) {
     header("Location: ../admin-login.html");
     exit();
 }

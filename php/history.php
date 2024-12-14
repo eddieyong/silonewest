@@ -3,7 +3,7 @@ session_start();
 require_once 'functions.php';
 
 // Check if user is logged in and has Admin role
-if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Storekeeper'])) {
+if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator'])) {
     header("Location: ../admin-login.html");
     exit();
 }
@@ -30,6 +30,8 @@ $base_query = "FROM activities WHERE 1";
 // Add role-based filtering
 if ($_SESSION['role'] === 'Storekeeper') {
     $base_query .= " AND activity_type IN ('inventory', 'stock_in', 'stock_out', 'purchase_order', 'delivery_order')";
+} elseif ($_SESSION['role'] === 'Coordinator') {
+    $base_query .= " AND activity_type IN ('inventory', 'purchase_order', 'delivery_order')";
 }
 
 // Modify query based on category
@@ -87,6 +89,11 @@ include 'admin-header.php';
         <a href="?category=all" class="filter-btn <?php echo $category === 'all' ? 'active' : ''; ?>">
             <i class="fas fa-list"></i> All Activities
         </a>
+        <?php if ($_SESSION['role'] !== 'Coordinator'): ?>
+            <a href="?category=stock" class="filter-btn <?php echo $category === 'stock' ? 'active' : ''; ?>">
+                <i class="fas fa-box"></i> Stock In / Out
+            </a>
+        <?php endif; ?>
         <a href="?category=inventory" class="filter-btn <?php echo $category === 'inventory' ? 'active' : ''; ?>">
             <i class="fas fa-warehouse"></i> Inventory
         </a>
@@ -101,9 +108,6 @@ include 'admin-header.php';
                 <i class="fas fa-industry"></i> Supplier
             </a>
         <?php endif; ?>
-        <a href="?category=stock" class="filter-btn <?php echo $category === 'stock' ? 'active' : ''; ?>">
-            <i class="fas fa-box"></i> Stock In / Out
-        </a>
         <a href="?category=purchase_order" class="filter-btn <?php echo $category === 'purchase_order' ? 'active' : ''; ?>">
             <i class="fas fa-file-invoice"></i> Purchase Orders
         </a>
