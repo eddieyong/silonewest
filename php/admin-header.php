@@ -88,7 +88,6 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
             z-index: 1;
             border-radius: 5px;
             top: 100%;
-            left: 0;
         }
 
         .dropdown:hover .dropdown-content {
@@ -114,11 +113,86 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
             border-bottom-right-radius: 5px;
         }
 
+        /* Mobile menu button */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
         /* Container Style */
         .container {
             padding: 20px 30px;
             background: #f8f9fa;
             min-height: calc(100vh - 72px);
+        }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            .top-nav {
+                padding: 1rem;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .nav-items {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: #5c1f00;
+                flex-direction: column;
+                align-items: stretch;
+                padding: 1rem;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+
+            .nav-items.active {
+                display: flex;
+            }
+
+            .nav-items a {
+                padding: 0.8rem 1rem;
+                text-align: left;
+                border-radius: 0;
+                width: 100%;
+            }
+
+            .dropdown {
+                width: 100%;
+            }
+
+            .dropdown-content {
+                position: static;
+                box-shadow: none;
+                width: 100%;
+                margin-top: 0;
+                padding-left: 1rem;
+            }
+
+            .dropdown-content a {
+                padding-left: 2rem;
+            }
+
+            .dropdown:hover .dropdown-content {
+                display: none;
+            }
+
+            .dropdown.active .dropdown-content {
+                display: block;
+            }
+
+            .nav-items .logout-btn {
+                margin-top: 1rem;
+                justify-content: center;
+            }
         }
     </style>
 </head>
@@ -129,12 +203,15 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
                 <img src="../img/logo.png" alt="SILO Logo" style="height: 40px;">
             </a>
         </div>
+        <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+            <i class="fas fa-bars"></i>
+        </button>
         <div class="nav-items">
             <a href="admin.php"><i class="fas fa-home"></i> Dashboard</a>
 
             <?php if ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'Storekeeper'): ?>
                 <div class="dropdown">
-                    <a href="#"><i class="fas fa-box"></i> Inventory <i class="fas fa-caret-down"></i></a>
+                    <a href="#" onclick="toggleDropdown(this)"><i class="fas fa-box"></i> Inventory <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
                         <a href="inventory.php"><i class="fas fa-list"></i> View Inventory</a>
                         <?php if ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'Storekeeper'): ?>
@@ -148,7 +225,7 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
 
             <?php if ($_SESSION['role'] === 'Admin'): ?>
                 <div class="dropdown">
-                    <a href="#"><i class="fas fa-truck"></i> Suppliers <i class="fas fa-caret-down"></i></a>
+                    <a href="#" onclick="toggleDropdown(this)"><i class="fas fa-truck"></i> Suppliers <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
                         <a href="view-suppliers.php"><i class="fas fa-list"></i> View Suppliers</a>
                         <a href="add-supplier.php"><i class="fas fa-plus"></i> Add Supplier</a>
@@ -156,7 +233,7 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
                 </div>
 
                 <div class="dropdown">
-                    <a href="#"><i class="fas fa-users"></i> Users <i class="fas fa-caret-down"></i></a>
+                    <a href="#" onclick="toggleDropdown(this)"><i class="fas fa-users"></i> Users <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
                         <a href="manage-users.php"><i class="fas fa-list"></i> View Users</a>
                         <a href="add-user.php"><i class="fas fa-user-plus"></i> Add User</a>
@@ -164,7 +241,7 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
                 </div>
 
                 <div class="dropdown">
-                    <a href="#"><i class="fas fa-car"></i> Vehicles <i class="fas fa-caret-down"></i></a>
+                    <a href="#" onclick="toggleDropdown(this)"><i class="fas fa-car"></i> Vehicles <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
                         <a href="view-vehicles.php"><i class="fas fa-list"></i> View Vehicles</a>
                         <a href="add-vehicle.php"><i class="fas fa-plus"></i> Add Vehicle</a>
@@ -172,7 +249,7 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
                 </div>
 
                 <div class="dropdown">
-                    <a href="#"><i class="fas fa-warehouse"></i> Warehouse <i class="fas fa-caret-down"></i></a>
+                    <a href="#" onclick="toggleDropdown(this)"><i class="fas fa-warehouse"></i> Warehouse <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
                         <a href="warehouse-maintenance.php"><i class="fas fa-tools"></i> Maintenance</a>
                     </div>
@@ -186,7 +263,7 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
 
             <?php if ($_SESSION['role'] === 'Coordinator'): ?>
                 <div class="dropdown">
-                    <a href="#"><i class="fas fa-truck"></i> Deliveries <i class="fas fa-caret-down"></i></a>
+                    <a href="#" onclick="toggleDropdown(this)"><i class="fas fa-truck"></i> Deliveries <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
                         <a href="purchase-orders.php"><i class="fas fa-file-invoice"></i> Purchase Orders</a>
                         <a href="delivery-orders.php"><i class="fas fa-shipping-fast"></i> Delivery Orders</a>
@@ -201,5 +278,55 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
             </a>
         </div>
     </nav>
+
+    <script>
+        function toggleMobileMenu() {
+            const navItems = document.querySelector('.nav-items');
+            navItems.classList.toggle('active');
+        }
+
+        function toggleDropdown(element) {
+            if (window.innerWidth <= 768) {
+                event.preventDefault();
+                const dropdown = element.parentElement;
+                const dropdowns = document.querySelectorAll('.dropdown');
+                
+                // Close other dropdowns
+                dropdowns.forEach(d => {
+                    if (d !== dropdown) {
+                        d.classList.remove('active');
+                    }
+                });
+                
+                // Toggle current dropdown
+                dropdown.classList.toggle('active');
+            }
+        }
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const navItems = document.querySelector('.nav-items');
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            
+            if (!event.target.closest('.nav-items') && 
+                !event.target.closest('.mobile-menu-btn') && 
+                window.innerWidth <= 768) {
+                navItems.classList.remove('active');
+                document.querySelectorAll('.dropdown').forEach(d => {
+                    d.classList.remove('active');
+                });
+            }
+        });
+
+        // Close mobile menu when window is resized above mobile breakpoint
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                document.querySelector('.nav-items').classList.remove('active');
+                document.querySelectorAll('.dropdown').forEach(d => {
+                    d.classList.remove('active');
+                });
+            }
+        });
+    </script>
 </body>
 </html> 
