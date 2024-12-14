@@ -6,34 +6,6 @@ function logActivity($mysqli, $activity_type, $description) {
     // Get the current user if logged in
     $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'System';
     
-    // Format stock movement descriptions and set correct activity type
-    if (strpos($description, 'Removed') === 0) {
-        $activity_type = 'stock_out';
-        $description = preg_replace('/^Removed (\d+) items/', 'Stock Out $1 items', $description);
-    } elseif (strpos($description, 'Added') === 0) {
-        $activity_type = 'stock_in';
-        $description = preg_replace('/^Added (\d+) items/', 'Stock In $1 items', $description);
-    }
-    
-    // Map old activity types to new ones
-    $activity_map = [
-        'vehicles' => 'vehicles',
-        'vehicle' => 'vehicles',
-        'inventory' => 'inventory',
-        'supplier' => 'supplier',
-        'customer' => 'user',
-        'user' => 'user',
-        'stock_in' => 'stock_in',
-        'stock_out' => 'stock_out',
-        'purchase_order' => 'purchase_order',
-        'delivery_order' => 'delivery_order'
-    ];
-    
-    // Get the correct activity type from the map, default to 'inventory' if not found
-    $normalized_type = isset($activity_map[strtolower($activity_type)]) 
-        ? $activity_map[strtolower($activity_type)] 
-        : 'inventory';
-    
     // Add user info to the description
     $full_description = "By $username: $description";
     
@@ -41,7 +13,7 @@ function logActivity($mysqli, $activity_type, $description) {
     $timestamp = date('Y-m-d H:i:s');
     
     $stmt = $mysqli->prepare("INSERT INTO activities (activity_type, description, created_by, created_at) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("ssss", $normalized_type, $full_description, $username, $timestamp);
+    $stmt->bind_param("ssss", $activity_type, $full_description, $username, $timestamp);
     $stmt->execute();
     $stmt->close();
 }

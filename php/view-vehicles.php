@@ -273,14 +273,14 @@ include 'admin-header.php';
     <div class="page-header">
         <h1 class="page-title">Manage Vehicles</h1>
         <div class="header-buttons">
+            <a href="add-vehicle.php" class="add-vehicle-btn">
+                <i class="fas fa-plus"></i> Add New Vehicle
+            </a>
             <a href="export-vehicles-pdf.php" class="export-btn pdf">
                 <i class="fas fa-file-pdf"></i> Export to PDF
             </a>
             <a href="export-vehicles-excel.php" class="export-btn excel">
                 <i class="fas fa-file-excel"></i> Export to Excel
-            </a>
-            <a href="add-vehicle.php" class="add-vehicle-btn" style="margin-left: 10px;">
-                <i class="fas fa-plus"></i> Add New Vehicle
             </a>
         </div>
     </div>
@@ -319,7 +319,6 @@ include 'admin-header.php';
                     <th>Description</th>
                     <th>Insurance Expiry</th>
                     <th>Road Tax Expiry</th>
-                    <th>PUSPAKOM Expiry</th>
                     <th>GPS</th>
                     <th>Remarks</th>
                     <th>Actions</th>
@@ -331,11 +330,9 @@ include 'admin-header.php';
                     $today = new DateTime();
                     $insurance_expiry = new DateTime($row['insurance_expiry']);
                     $roadtax_expiry = new DateTime($row['roadtax_expiry']);
-                    $puspakom_expiry = new DateTime($row['puspakom_expiry']);
                     
                     $insurance_diff = $today->diff($insurance_expiry)->days;
                     $roadtax_diff = $today->diff($roadtax_expiry)->days;
-                    $puspakom_diff = $today->diff($puspakom_expiry)->days;
                 ?>
                     <tr>
                         <td><?php echo htmlspecialchars($row['vehicle_number']); ?></td>
@@ -346,11 +343,8 @@ include 'admin-header.php';
                         <td class="<?php echo ($roadtax_diff < 30) ? ($roadtax_diff < 7 ? 'expiry-warning' : 'expiry-soon') : ''; ?>">
                             <?php echo date('d/m/Y', strtotime($row['roadtax_expiry'])); ?>
                         </td>
-                        <td class="<?php echo ($puspakom_diff < 30) ? ($puspakom_diff < 7 ? 'expiry-warning' : 'expiry-soon') : ''; ?>">
-                            <?php echo $row['puspakom_expiry'] ? date('d/m/Y', strtotime($row['puspakom_expiry'])) : '<span style="color: #333;">-</span>'; ?>
-                        </td>
-                        <td><?php echo htmlspecialchars($row['gps']) ?: '<span style="color: #333;">-</span>'; ?></td>
-                        <td><?php echo htmlspecialchars($row['remarks']) ?: '<span style="color: #333;">-</span>'; ?></td>
+                        <td><?php echo htmlspecialchars($row['gps'] ?: '-'); ?></td>
+                        <td><?php echo htmlspecialchars($row['remarks'] ?: '-'); ?></td>
                         <td>
                             <div class="action-buttons">
                                 <a href="edit-vehicle.php?id=<?php echo $row['id']; ?>" class="edit-btn">

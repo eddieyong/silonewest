@@ -159,13 +159,6 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
                     <a href="add-vehicle.php"><i class="fas fa-plus"></i> Add Vehicle</a>
                 </div>
             </div>
-            <div class="dropdown">
-                <a href="#"><i class="fas fa-warehouse"></i> Warehouse <i class="fas fa-caret-down"></i></a>
-                <div class="dropdown-content">
-                    <a href="warehouse-maintenance.php"><i class="fas fa-tools"></i> Maintenance</a>
-                </div>
-            </div>
-            <a href="manage-notifications.php"><i class="fas fa-bell"></i> Notifications</a>
             <a href="history.php"><i class="fas fa-history"></i> History</a>
             <a href="admin-profile.php"><i class="fas fa-user"></i> Profile</a>
             <a href="logout.php" class="logout-btn" onclick="return confirm('Are you sure you want to logout?');">
