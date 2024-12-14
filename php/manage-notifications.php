@@ -2,10 +2,13 @@
 session_start();
 
 // Check if user is logged in and has appropriate role
-if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Storekeeper'])) {
+if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator', 'Driver'])) {
     header("Location: ../admin-login.html");
     exit();
 }
+
+// Set view-only mode for Coordinator and Driver
+$isViewOnly = ($_SESSION['role'] === 'Coordinator' || $_SESSION['role'] === 'Driver' || $_SESSION['role'] === 'Storekeeper');
 
 // Database connection
 $mysqli = new mysqli("localhost", "root", "", "fyp");
@@ -430,10 +433,10 @@ include 'admin-header.php';
         <h1 class="page-title">
             <i class="fas fa-bell"></i> Manage Notifications
         </h1>
-        <?php if ($_SESSION['role'] === 'Admin'): ?>
-        <button class="action-button" onclick="openCreateModal()">
-            <i class="fas fa-plus"></i> Create Notification
-        </button>
+        <?php if (!$isViewOnly): ?>
+            <button class="action-button" onclick="openCreateModal()">
+                <i class="fas fa-plus"></i> Create Notification
+            </button>
         <?php endif; ?>
     </div>
 
@@ -465,29 +468,25 @@ include 'admin-header.php';
             <div class="notification-card">
                 <div class="notification-header">
                     <div class="notification-title"><?php echo htmlspecialchars($notification['title']); ?></div>
-                    <span class="notification-type <?php echo $notification['type']; ?>">
-                        <?php echo ucfirst(htmlspecialchars($notification['type'])); ?>
+                    <span class="notification-type <?php echo strtolower($notification['type']); ?>">
+                        <?php echo htmlspecialchars($notification['type']); ?>
                     </span>
                 </div>
                 <div class="notification-meta">
-                    <span class="meta-item">
+                    <div class="meta-item">
                         <i class="fas fa-user"></i>
-                        Created by: <?php echo htmlspecialchars($notification['created_by']); ?>
-                    </span>
-                    <span class="meta-item">
-                        <i class="fas fa-calendar-alt"></i>
-                        Start: <?php echo date('Y-m-d H:i', strtotime($notification['start_date'])); ?>
-                    </span>
-                    <span class="meta-item">
+                        <?php echo htmlspecialchars($notification['created_by']); ?>
+                    </div>
+                    <div class="meta-item">
                         <i class="fas fa-clock"></i>
-                        End: <?php echo $notification['end_date'] ? date('Y-m-d H:i', strtotime($notification['end_date'])) : 'Indefinite'; ?>
-                    </span>
+                        <?php echo date('M d, Y H:i', strtotime($notification['created_at'])); ?>
+                    </div>
                 </div>
                 <div class="notification-message">
                     <?php echo nl2br(htmlspecialchars($notification['message'])); ?>
                 </div>
-                <div class="notification-actions">
-                    <?php if ($_SESSION['role'] === 'Admin'): ?>
+                <?php if (!$isViewOnly): ?>
+                    <div class="notification-actions">
                         <?php if ($current_tab === 'active'): ?>
                             <form method="POST" style="display: inline;">
                                 <input type="hidden" name="action" value="archive">
@@ -512,8 +511,8 @@ include 'admin-header.php';
                                 <i class="fas fa-trash-alt"></i> Delete
                             </button>
                         </form>
-                    <?php endif; ?>
-                </div>
+                    </div>
+                <?php endif; ?>
             </div>
         <?php endwhile; ?>
     <?php else: ?>

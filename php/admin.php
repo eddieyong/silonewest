@@ -53,6 +53,48 @@ $low_stock_items = $mysqli->query("
     LIMIT 5
 ");
 
+// Get driver's pending deliveries if user is a driver
+$driver_deliveries = null;
+if ($_SESSION['role'] === 'Driver') {
+    $driver_name = $_SESSION['username'];
+    $driver_deliveries = $mysqli->query("
+        SELECT do.*, po.supplier_name 
+        FROM delivery_orders do 
+        LEFT JOIN purchase_orders po ON do.po_number = po.po_number 
+        WHERE do.driver_name = '$driver_name' 
+        AND do.status = 'Pending' 
+        ORDER BY do.delivery_date ASC
+    ");
+}
+
+// Get driver's delivery statistics if user is a driver
+$driver_stats = null;
+if ($_SESSION['role'] === 'Driver') {
+    $driver_name = $_SESSION['username'];
+    $pending_deliveries = $mysqli->query("
+        SELECT COUNT(*) as count 
+        FROM delivery_orders 
+        WHERE driver_name = '$driver_name' 
+        AND status = 'Pending'"
+    )->fetch_assoc()['count'];
+
+    $completed_deliveries = $mysqli->query("
+        SELECT COUNT(*) as count 
+        FROM delivery_orders 
+        WHERE driver_name = '$driver_name' 
+        AND status = 'Completed'"
+    )->fetch_assoc()['count'];
+
+    $cancelled_deliveries = $mysqli->query("
+        SELECT COUNT(*) as count 
+        FROM delivery_orders 
+        WHERE driver_name = '$driver_name' 
+        AND status = 'Cancelled'"
+    )->fetch_assoc()['count'];
+}
+?>
+
+<?php
 include 'admin-header.php';
 ?>
 
@@ -159,6 +201,18 @@ include 'admin-header.php';
                 </div>
             </div>
         <?php endif; ?>
+
+        <?php if ($_SESSION['role'] === 'Driver'): ?>
+            <div class="quick-access-card">
+                <div class="card-icon">🚚</div>
+                <h2 class="card-title">My Deliveries</h2>
+                <div class="card-buttons">
+                    <a href="#" class="card-btn" onclick="showMyDeliveries()">
+                        <i class="fas fa-truck"></i> View My Deliveries
+                    </a>
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
 
     <div class="dashboard-grid">
@@ -208,6 +262,43 @@ include 'admin-header.php';
             </div>
         </div>
 
+        <?php if ($_SESSION['role'] === 'Driver'): ?>
+        <div class="dashboard-section">
+            <h2 class="section-title">
+                <span><i class="fas fa-truck"></i> My Delivery Overview</span>
+            </h2>
+
+            <div class="overview-item">
+                <div>
+                    <div class="overview-title">
+                        <i class="fas fa-clock"></i> Pending Deliveries
+                    </div>
+                    <div class="overview-subtitle">Deliveries waiting to be completed</div>
+                </div>
+                <div class="overview-count pending"><?php echo number_format($pending_deliveries); ?></div>
+            </div>
+
+            <div class="overview-item">
+                <div>
+                    <div class="overview-title">
+                        <i class="fas fa-check-circle"></i> Completed Deliveries
+                    </div>
+                    <div class="overview-subtitle">Successfully delivered orders</div>
+                </div>
+                <div class="overview-count completed"><?php echo number_format($completed_deliveries); ?></div>
+            </div>
+
+            <div class="overview-item">
+                <div>
+                    <div class="overview-title">
+                        <i class="fas fa-times-circle"></i> Cancelled Deliveries
+                    </div>
+                    <div class="overview-subtitle">Orders that were cancelled</div>
+                </div>
+                <div class="overview-count cancelled"><?php echo number_format($cancelled_deliveries); ?></div>
+            </div>
+        </div>
+        <?php elseif ($_SESSION['role'] !== 'Driver'): ?>
         <div class="dashboard-section">
             <h2 class="section-title">
                 <span><i class="fas fa-bell"></i> Notifications & Activities</span>
@@ -301,6 +392,56 @@ include 'admin-header.php';
                             <div class="notification-subtitle">No system activities recorded yet</div>
                         </div>
                     <?php endif; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- Driver Deliveries Modal -->
+<div id="driverDeliveriesModal" class="modal">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2 class="modal-title">My Assigned Deliveries</h2>
+            <button type="button" onclick="closeDeliveriesModal()" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <?php if ($driver_deliveries && $driver_deliveries->num_rows > 0): ?>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>DO Number</th>
+                            <th>Delivery Date</th>
+                            <th>Recipient</th>
+                            <th>Address</th>
+                            <th>Contact Person</th>
+                            <th>Contact Number</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php while ($delivery = $driver_deliveries->fetch_assoc()): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($delivery['do_number']); ?></td>
+                                <td><?php echo date('M d, Y', strtotime($delivery['delivery_date'])); ?></td>
+                                <td><?php echo htmlspecialchars($delivery['recipient_company']); ?></td>
+                                <td><?php echo htmlspecialchars($delivery['delivery_address']); ?></td>
+                                <td><?php echo htmlspecialchars($delivery['contact_person']); ?></td>
+                                <td><?php echo htmlspecialchars($delivery['contact_number']); ?></td>
+                                <td>
+                                    <a href="view-do.php?do=<?php echo $delivery['do_number']; ?>" class="btn-view">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            <?php else: ?>
+                <div class="no-deliveries">
+                    <i class="fas fa-check-circle" style="font-size: 48px; color: #28a745; margin-bottom: 20px;"></i>
+                    <p>No pending deliveries assigned to you at the moment.</p>
                 </div>
             <?php endif; ?>
         </div>
@@ -573,6 +714,106 @@ include 'admin-header.php';
         max-height: 500px;
         overflow-y: auto;
     }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background: white;
+        margin: 50px auto;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        padding: 20px;
+        background: #5c1f00;
+        color: white;
+        border-radius: 10px 10px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+
+    .table th,
+    .table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .table th {
+        background: #f8f9fa;
+        font-weight: 600;
+    }
+
+    .btn-view {
+        padding: 6px 12px;
+        background: #e3f2fd;
+        color: #1976d2;
+        border-radius: 4px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.9rem;
+    }
+
+    .btn-view:hover {
+        background: #c8e6ff;
+        color: #0056b3;
+    }
+
+    .no-deliveries {
+        text-align: center;
+        padding: 40px 20px;
+        color: #666;
+    }
+
+    .overview-count {
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    .overview-count.pending {
+        color: #ffc107;
+    }
+
+    .overview-count.completed {
+        color: #28a745;
+    }
+
+    .overview-count.cancelled {
+        color: #dc3545;
+    }
 </style>
 
 <script>
@@ -596,6 +837,22 @@ function switchTab(tabName) {
 setInterval(function() {
     window.location.reload();
 }, 60000);
+
+function showMyDeliveries() {
+    document.getElementById('driverDeliveriesModal').style.display = 'block';
+}
+
+function closeDeliveriesModal() {
+    document.getElementById('driverDeliveriesModal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('driverDeliveriesModal');
+    if (event.target == modal) {
+        closeDeliveriesModal();
+    }
+}
 </script>
 
 <?php $mysqli->close(); ?>

@@ -2,11 +2,14 @@
 session_start();
 require_once 'functions.php';
 
-// Check if user is logged in and has Admin role
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Admin') {
+// Check if user is logged in and has appropriate role
+if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Driver'])) {
     header("Location: ../admin-login.html");
     exit();
 }
+
+// Set view-only mode for Driver
+$isViewOnly = ($_SESSION['role'] === 'Driver');
 
 // Database connection
 $mysqli = new mysqli("localhost", "root", "", "fyp");
@@ -273,15 +276,17 @@ include 'admin-header.php';
     <div class="page-header">
         <h1 class="page-title">Manage Vehicles</h1>
         <div class="header-buttons">
-            <a href="export-vehicles-pdf.php" class="export-btn pdf">
-                <i class="fas fa-file-pdf"></i> Export to PDF
-            </a>
-            <a href="export-vehicles-excel.php" class="export-btn excel">
-                <i class="fas fa-file-excel"></i> Export to Excel
-            </a>
-            <a href="add-vehicle.php" class="add-vehicle-btn" style="margin-left: 10px;">
-                <i class="fas fa-plus"></i> Add New Vehicle
-            </a>
+            <?php if (!$isViewOnly): ?>
+                <a href="export-vehicles-pdf.php" class="export-btn pdf">
+                    <i class="fas fa-file-pdf"></i> Export to PDF
+                </a>
+                <a href="export-vehicles-excel.php" class="export-btn excel">
+                    <i class="fas fa-file-excel"></i> Export to Excel
+                </a>
+                <a href="add-vehicle.php" class="add-vehicle-btn" style="margin-left: 10px;">
+                    <i class="fas fa-plus"></i> Add New Vehicle
+                </a>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -353,15 +358,17 @@ include 'admin-header.php';
                         <td><?php echo htmlspecialchars($row['remarks']) ?: '<span style="color: #333;">-</span>'; ?></td>
                         <td>
                             <div class="action-buttons">
-                                <a href="edit-vehicle.php?id=<?php echo $row['id']; ?>" class="edit-btn">
-                                    <i class="fas fa-edit"></i> Edit
-                                </a>
-                                <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this vehicle?')">
-                                    <input type="hidden" name="vehicle_id" value="<?php echo $row['id']; ?>">
-                                    <button type="submit" name="delete_vehicle" class="delete-btn">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </button>
-                                </form>
+                                <?php if (!$isViewOnly): ?>
+                                    <a href="edit-vehicle.php?id=<?php echo $row['id']; ?>" class="edit-btn">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this vehicle?')">
+                                        <input type="hidden" name="vehicle_id" value="<?php echo $row['id']; ?>">
+                                        <button type="submit" name="delete_vehicle" class="delete-btn">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
                             </div>
                         </td>
                     </tr>

@@ -9,14 +9,13 @@ if (!isset($_SESSION['username'])) {
 }
 
 // Check if user has permission to access Purchase Orders
-if (!in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator'])) {
-    header("Location: inventory.php");
-    $_SESSION['error_msg'] = "You don't have permission to view Purchase Orders.";
+if (!in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator', 'Driver'])) {
+    header("Location: admin.php");
     exit();
 }
 
-// Set view-only mode for Coordinator
-$isViewOnly = ($_SESSION['role'] === 'Coordinator');
+// Set view-only mode for Coordinator and Driver
+$isViewOnly = ($_SESSION['role'] === 'Coordinator' || $_SESSION['role'] === 'Driver');
 
 // Database connection
 $mysqli = new mysqli("localhost", "root", "", "fyp");

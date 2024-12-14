@@ -9,14 +9,14 @@ if (!isset($_SESSION['username'])) {
 }
 
 // Check if user has permission to access Delivery Orders
-if (!in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator'])) {
+if (!in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator', 'Driver'])) {
     header("Location: inventory.php");
     $_SESSION['error_msg'] = "You don't have permission to view Delivery Orders.";
     exit();
 }
 
-// Set view-only mode for Coordinator
-$isViewOnly = ($_SESSION['role'] === 'Coordinator');
+// Set view-only mode for Coordinator and Driver
+$isViewOnly = ($_SESSION['role'] === 'Coordinator' || $_SESSION['role'] === 'Driver');
 
 if (!isset($_GET['do'])) {
     header("Location: delivery-orders.php");
@@ -214,7 +214,15 @@ include 'admin-header.php';
             <a href="export-do-pdf.php?do=<?php echo urlencode($do['do_number']); ?>" class="btn-print" style="background: #28a745;">
                 <i class="fas fa-file-pdf"></i> Export PDF
             </a>
-            <a href="<?php echo $_SESSION['role'] === 'Admin' ? 'delivery-orders.php' : 'view-delivery-orders.php'; ?>" class="btn-back">
+            <a href="<?php 
+                if ($_SESSION['role'] === 'Admin') {
+                    echo 'delivery-orders.php';
+                } elseif ($_SESSION['role'] === 'Driver') {
+                    echo 'admin.php';
+                } else {
+                    echo 'view-delivery-orders.php';
+                }
+            ?>" class="btn-back">
                 <i class="fas fa-arrow-left"></i> Back to List
             </a>
         </div>

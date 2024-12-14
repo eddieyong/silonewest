@@ -207,23 +207,19 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
             <i class="fas fa-bars"></i>
         </button>
         <div class="nav-items">
+            <!-- Common Dashboard Link -->
             <a href="admin.php"><i class="fas fa-home"></i> Dashboard</a>
 
-            <?php if ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'Storekeeper'): ?>
+            <!-- Admin Navigation -->
+            <?php if ($_SESSION['role'] === 'Admin'): ?>
                 <div class="dropdown">
                     <a href="#" onclick="toggleDropdown(this)"><i class="fas fa-box"></i> Inventory <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
                         <a href="inventory.php"><i class="fas fa-list"></i> View Inventory</a>
-                        <?php if ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'Storekeeper'): ?>
-                            <a href="add-inventory.php"><i class="fas fa-plus"></i> Add Item</a>
-                        <?php endif; ?>
+                        <a href="add-inventory.php"><i class="fas fa-plus"></i> Add Item</a>
                     </div>
                 </div>
-            <?php elseif ($_SESSION['role'] === 'Coordinator'): ?>
-                <a href="inventory.php"><i class="fas fa-box"></i> View Inventory</a>
-            <?php endif; ?>
 
-            <?php if ($_SESSION['role'] === 'Admin'): ?>
                 <div class="dropdown">
                     <a href="#" onclick="toggleDropdown(this)"><i class="fas fa-truck"></i> Suppliers <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
@@ -256,12 +252,21 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
                 </div>
             <?php endif; ?>
 
-            <?php if ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'Storekeeper'): ?>
-                <a href="manage-notifications.php"><i class="fas fa-bell"></i> Notifications</a>
-                <a href="history.php"><i class="fas fa-history"></i> History</a>
+            <!-- Storekeeper Navigation -->
+            <?php if ($_SESSION['role'] === 'Storekeeper'): ?>
+                <div class="dropdown">
+                    <a href="#" onclick="toggleDropdown(this)"><i class="fas fa-box"></i> Inventory <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="inventory.php"><i class="fas fa-list"></i> View Inventory</a>
+                        <a href="add-inventory.php"><i class="fas fa-plus"></i> Add Item</a>
+                    </div>
+                </div>
             <?php endif; ?>
 
+            <!-- Coordinator Navigation -->
             <?php if ($_SESSION['role'] === 'Coordinator'): ?>
+                <a href="inventory.php"><i class="fas fa-box"></i> View Inventory</a>
+                
                 <div class="dropdown">
                     <a href="#" onclick="toggleDropdown(this)"><i class="fas fa-truck"></i> Deliveries <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
@@ -269,9 +274,33 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
                         <a href="delivery-orders.php"><i class="fas fa-shipping-fast"></i> Delivery Orders</a>
                     </div>
                 </div>
+
+                <a href="manage-notifications.php"><i class="fas fa-bell"></i> Notifications</a>
                 <a href="history.php"><i class="fas fa-history"></i> History</a>
             <?php endif; ?>
 
+            <!-- Driver Navigation -->
+            <?php if ($_SESSION['role'] === 'Driver'): ?>
+                <div class="dropdown">
+                    <a href="#" onclick="toggleDropdown(this)"><i class="fas fa-truck"></i> Deliveries <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="purchase-orders.php"><i class="fas fa-file-invoice"></i> Purchase Orders</a>
+                        <a href="delivery-orders.php"><i class="fas fa-shipping-fast"></i> Delivery Orders</a>
+                    </div>
+                </div>
+
+                <a href="view-vehicles.php"><i class="fas fa-car"></i> View Vehicles</a>
+                <a href="manage-notifications.php"><i class="fas fa-bell"></i> Notifications</a>
+                <a href="history.php"><i class="fas fa-history"></i> History</a>
+            <?php endif; ?>
+
+            <!-- Common Navigation Items for Admin and Storekeeper -->
+            <?php if ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'Storekeeper'): ?>
+                <a href="manage-notifications.php"><i class="fas fa-bell"></i> Notifications</a>
+                <a href="history.php"><i class="fas fa-history"></i> History</a>
+            <?php endif; ?>
+
+            <!-- Common Profile and Logout Links -->
             <a href="admin-profile.php"><i class="fas fa-user"></i> Profile</a>
             <a href="logout.php" class="logout-btn" onclick="return confirm('Are you sure you want to logout?');">
                 <i class="fas fa-sign-out-alt"></i> Logout

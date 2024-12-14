@@ -10,14 +10,13 @@ if (!isset($_SESSION['username'])) {
 }
 
 // Check if user has permission to access Delivery Orders
-if (!in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator'])) {
-    header("Location: inventory.php");
-    $_SESSION['error_msg'] = "You don't have permission to access Delivery Orders.";
+if (!in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator', 'Driver'])) {
+    header("Location: admin.php");
     exit();
 }
 
-// Set view-only mode for Coordinator
-$isViewOnly = ($_SESSION['role'] === 'Coordinator');
+// Set view-only mode for Coordinator and Driver
+$isViewOnly = ($_SESSION['role'] === 'Coordinator' || $_SESSION['role'] === 'Driver');
 
 $mysqli = new mysqli("localhost", "root", "", "fyp");
 
@@ -159,6 +158,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_do'])) {
 // Get all vehicles for dropdown
 $vehicles_query = "SELECT vehicle_number FROM vehicles ORDER BY vehicle_number";
 $vehicles_result = $mysqli->query($vehicles_query);
+
+// Get all drivers for dropdown
+$drivers_query = "SELECT username, contact FROM admin WHERE role = 'Driver' ORDER BY username";
+$drivers_result = $mysqli->query($drivers_query);
 
 // Get all PO numbers for dropdown
 $po_query = "SELECT po_number FROM purchase_orders WHERE status = 'Completed' ORDER BY created_at DESC";
@@ -511,6 +514,23 @@ include 'admin-header.php';
         background: #ffcdd2 !important;
         color: #b71c1c !important;
     }
+
+    .btn-edit {
+        background: #e8f5e9;
+        color: #2e7d32;
+        padding: 6px 12px;
+        border-radius: 4px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.9rem;
+    }
+
+    .btn-edit:hover {
+        background: #c8e6c9;
+        color: #1b5e20;
+    }
 </style>
 
 <div class="container">
@@ -591,6 +611,9 @@ include 'admin-header.php';
                                 </a>
                                 <?php if (!$isViewOnly): ?>
                                     <?php if ($row['status'] === 'Pending'): ?>
+                                        <a href="edit-do.php?do=<?php echo $row['do_number']; ?>" class="btn-edit">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </a>
                                         <select class="form-select status-select" onchange="updateStatus(this, '<?php echo $row['do_number']; ?>')">
                                             <option value="">Change Status</option>
                                             <option value="Completed">Completed</option>
@@ -663,11 +686,23 @@ include 'admin-header.php';
                 </div>
                 <div class="form-group">
                     <label for="driver_name">Driver Name</label>
-                    <input type="text" name="driver_name" id="driver_name" class="form-control">
+                    <select name="driver_name" id="driver_name" class="form-control" onchange="updateDriverContact(this.value)">
+                        <option value="">Select Driver</option>
+                        <?php while ($driver = $drivers_result->fetch_assoc()): ?>
+                            <option value="<?php echo htmlspecialchars($driver['username']); ?>" data-contact="<?php echo htmlspecialchars($driver['contact']); ?>">
+                                <?php echo htmlspecialchars($driver['username']); ?>
+                            </option>
+                        <?php endwhile; ?>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="driver_contact">Driver Contact</label>
-                    <input type="text" name="driver_contact" id="driver_contact" class="form-control">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" name="driver_contact" id="driver_contact" class="form-control" readonly>
+                        <button type="button" class="btn-edit" onclick="toggleDriverContactEdit()" style="padding: 8px 15px; background: #e3f2fd; color: #1976d2; border: none; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="remarks">Remarks</label>
@@ -777,6 +812,23 @@ function deleteDO(doNumber) {
         
         document.body.appendChild(form);
         form.submit();
+    }
+}
+
+function updateDriverContact(driverName) {
+    const driverSelect = document.getElementById('driver_name');
+    const selectedOption = driverSelect.options[driverSelect.selectedIndex];
+    const driverContact = selectedOption.getAttribute('data-contact');
+    const driverContactInput = document.getElementById('driver_contact');
+    driverContactInput.value = driverContact || '';
+    driverContactInput.readOnly = true; // Reset to readonly when new driver is selected
+}
+
+function toggleDriverContactEdit() {
+    const driverContactInput = document.getElementById('driver_contact');
+    driverContactInput.readOnly = !driverContactInput.readOnly;
+    if (!driverContactInput.readOnly) {
+        driverContactInput.focus();
     }
 }
 </script>

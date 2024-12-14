@@ -10,14 +10,13 @@ if (!isset($_SESSION['username'])) {
 }
 
 // Check if user has permission to access Purchase Orders
-if (!in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator'])) {
-    header("Location: inventory.php");
-    $_SESSION['error_msg'] = "You don't have permission to access Purchase Orders.";
+if (!in_array($_SESSION['role'], ['Admin', 'Storekeeper', 'Coordinator', 'Driver'])) {
+    header("Location: admin.php");
     exit();
 }
 
-// Set view-only mode for Coordinator
-$isViewOnly = ($_SESSION['role'] === 'Coordinator');
+// Set view-only mode for Coordinator and Driver
+$isViewOnly = ($_SESSION['role'] === 'Coordinator' || $_SESSION['role'] === 'Driver');
 
 $mysqli = new mysqli("localhost", "root", "", "fyp");
 
@@ -317,6 +316,17 @@ include 'admin-header.php';
     .btn-edit {
         background: #e8f5e9;
         color: #2e7d32;
+        padding: 6px 12px;
+        border-radius: 4px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .btn-edit:hover {
+        background: #c8e6c9;
+        color: #1b5e20;
     }
 
     .btn-delete {
@@ -728,7 +738,7 @@ include 'admin-header.php';
 <div class="container">
     <div class="page-header">
         <h1 class="page-title">Purchase Orders</h1>
-        <?php if (!$isViewOnly): ?>
+        <?php if (!$isViewOnly && $_SESSION['role'] !== 'Driver'): ?>
             <button class="btn-primary" onclick="openCreatePOModal()">
                 <i class="fas fa-plus"></i> Create New PO
             </button>
@@ -807,7 +817,10 @@ include 'admin-header.php';
                                 <a href="view-po.php?po=<?php echo $row['po_number']; ?>" class="btn-view">
                                     <i class="fas fa-eye"></i> View
                                 </a>
-                                <?php if (!$isViewOnly && ($row['status'] === 'Pending' || $row['status'] === 'Received')): ?>
+                                <?php if (!$isViewOnly && $_SESSION['role'] !== 'Driver' && ($row['status'] === 'Pending' || $row['status'] === 'Received')): ?>
+                                    <a href="edit-po.php?po=<?php echo $row['po_number']; ?>" class="btn-edit">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
                                     <select class="form-select status-select" onchange="updateStatus(this, '<?php echo $row['po_number']; ?>')">
                                         <option value="">Change Status</option>
                                         <option value="Completed">Completed</option>
