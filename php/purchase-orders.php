@@ -120,18 +120,43 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_po'])) {
 
 // Handle status update
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_status'])) {
-    $po_number = $_POST['po_number'];
-    $new_status = $_POST['status'];
+    // Clear any previous output
+    if (ob_get_level()) ob_end_clean();
     
-    // Start transaction
-    $mysqli->begin_transaction();
+    // Start fresh output buffer
+    ob_start();
+    
+    // Set JSON header
+    header('Content-Type: application/json');
     
     try {
+        $po_number = $_POST['po_number'];
+        $new_status = $_POST['status'];
+        
+        // Validate inputs
+        if (empty($po_number) || empty($new_status)) {
+            throw new Exception("Missing required parameters");
+        }
+        
+        // Validate status
+        $valid_statuses = ['Completed', 'Cancelled', 'Received'];
+        if (!in_array($new_status, $valid_statuses)) {
+            throw new Exception("Invalid status value");
+        }
+        
+        // Start transaction
+        $mysqli->begin_transaction();
+        
         // Get current status for logging
         $stmt = $mysqli->prepare("SELECT status FROM purchase_orders WHERE po_number = ?");
         $stmt->bind_param("s", $po_number);
         $stmt->execute();
         $result = $stmt->get_result();
+        
+        if ($result->num_rows === 0) {
+            throw new Exception("Purchase Order not found");
+        }
+        
         $current_status = $result->fetch_assoc()['status'];
         
         // Update status
@@ -140,7 +165,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_status'])) {
         $stmt->execute();
         
         if ($stmt->affected_rows === 0) {
-            throw new Exception("Failed to update status.");
+            throw new Exception("Failed to update status");
         }
         
         // Log the activity
@@ -148,18 +173,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_status'])) {
         logActivity($mysqli, 'purchase_order', $description);
         
         $mysqli->commit();
-        $_SESSION['success_msg'] = "Status updated successfully!";
-        http_response_code(200);
+        
+        // Clear any potential output before sending JSON
+        if (ob_get_length()) ob_clean();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Status updated successfully!'
+        ]);
+        
     } catch (Exception $e) {
         $mysqli->rollback();
-        $_SESSION['error_msg'] = "Error updating status: " . $e->getMessage();
+        
+        // Clear any potential output before sending JSON
+        if (ob_get_length()) ob_clean();
+        
         http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
     }
     
-    if (!isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
-        header("Location: purchase-orders.php");
-        exit();
-    }
+    // End output buffer and exit
+    ob_end_flush();
+    exit();
 }
 
 // Get all suppliers for the dropdown
@@ -1076,15 +1114,23 @@ function updateStatus(selectElement, poNumber) {
 
         fetch('purchase-orders.php', {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         })
-        .then(response => response.text())
-        .then(() => {
-            location.reload();
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                throw new Error(data.message || 'Error updating status');
+            }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error updating status. Please try again.');
+            alert('Error updating status: ' + error.message);
+            selectElement.value = ''; // Reset dropdown on error
         });
     } else {
         selectElement.value = ''; // Reset to default if cancelled

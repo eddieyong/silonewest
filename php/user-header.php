@@ -1,10 +1,12 @@
 <?php
-// Start the session
-session_start();
+// Start the session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-// Check if the user is logged in and has the 'Customer' role
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Customer') {
-    header("Location: ../login.html");
+// Check if user is logged in
+if (!isset($_SESSION['username'])) {
+    header("Location: ../mainlogin.html");
     exit();
 }
 ?>
@@ -85,11 +87,10 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'Customer') {
             </a>
         </div>
         <div class="nav-items">
-            <a href="user-dashboard.php"><i class="fas fa-home"></i> Dashboard</a>
+            <a href="customer-dashboard.php"><i class="fas fa-home"></i> Dashboard</a>
             <a href="place-order.php"><i class="fas fa-shopping-cart"></i> Place Order</a>
             <a href="my-orders.php"><i class="fas fa-list"></i> My Orders</a>
-            <a href="track-order.php"><i class="fas fa-truck"></i> Track Order</a>
-            <a href="user-profile.php"><i class="fas fa-user"></i> Profile</a>
+            <a href="customer-profile.php"><i class="fas fa-user"></i> Profile</a>
             <a href="logout.php" class="logout-btn" onclick="return confirm('Are you sure you want to logout?');">
                 <i class="fas fa-sign-out-alt"></i> Logout
             </a>

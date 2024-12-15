@@ -213,6 +213,13 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['Admin', 'Sto
             <!-- Admin Navigation -->
             <?php if ($_SESSION['role'] === 'Admin'): ?>
                 <div class="dropdown">
+                    <a href="#" onclick="toggleDropdown(this)"><i class="fas fa-shopping-cart"></i> Orders <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="view-orders.php"><i class="fas fa-list"></i> View Orders</a>
+                    </div>
+                </div>
+
+                <div class="dropdown">
                     <a href="#" onclick="toggleDropdown(this)"><i class="fas fa-box"></i> Inventory <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
                         <a href="inventory.php"><i class="fas fa-list"></i> View Inventory</a>
